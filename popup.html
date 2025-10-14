@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 320px;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf0 100%);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .version {
+            margin: 4px 0;
+            color: #7f8c8d;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        .status-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        .status-value {
+            color: #6c757d;
+        }
+        .status-value.active {
+            color: #28a745;
+            font-weight: 500;
+        }
+        .info {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #34495e;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.8);
+            line-height: 1.5;
+        }
+        .info-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .link {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .link:hover {
+            color: #2980b9;
+            border-bottom-color: #2980b9;
+        }
+        .footer {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #7f8c8d;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .social-links {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        .social-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.5);
+        }
+        .social-link:hover {
+            background: rgba(255,255,255,0.8);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .social-link svg {
+            width: 16px;
+            height: 16px;
+        }
+        .bilibili svg {
+            fill: #00a1d6;
+        }
+        .github svg {
+            fill: #333;
+        }
+        .twitter svg {
+            fill: #1da1f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Grok Spirit</h1>
+        <div class="version" id="version-info">v1.0.4</div>
+    </div>
+
+
+    <div class="info">
+        <div class="info-title">How to use:</div>
+        1. Go to <a href="https://grok.com/imagine" target="_blank" class="link">grok.com/imagine</a> and generate a video<br>
+        2. The plugin will automatically detect completed videos<br>
+        3. Use the meta info panel to view and edit grok prompt params<br>
+        4. Download videos and metadata with the same filename as needed<br>
+        5. The meta info panel will be shown when you reopen the video page
+    </div>
+
+    <div class="info">
+        <div class="info-title">Technical Note:</div>
+        This plugin uses debugger permission to capture prompt info from grok.com request data. The debugger will automatically activate on grok.com video pages and deactivate when you leave.
+    </div>
+
+    <div class="footer">
+        <div class="footer-content">
+            <span>Version <span id="version-number">1.0.4</span> | Author: Izumi.屈源</span>
+        </div>
+        <div class="social-links">
+            <a href="https://space.bilibili.com/82205" target="_blank" class="social-link bilibili" title="Bilibili">
+                <svg viewBox="0 0 1024 1024">
+                    <path d="M306.005333 117.632L444.330667 256h135.296l138.368-138.325333a42.666667 42.666667 0 0 1 60.373333 60.373333L700.330667 256H789.333333A149.333333 149.333333 0 0 1 938.666667 405.333333v341.333334a149.333333 149.333333 0 0 1-149.333334 149.333333h-554.666666A149.333333 149.333333 0 0 1 85.333333 746.666667v-341.333334A149.333333 149.333333 0 0 1 234.666667 256h88.96L245.632 177.962667a42.666667 42.666667 0 0 1 60.373333-60.373334zM789.333333 341.333333h-554.666666a64 64 0 0 0-63.701334 57.856L170.666667 405.333333v341.333334a64 64 0 0 0 57.856 63.701333L234.666667 810.666667h554.666666a64 64 0 0 0 63.701334-57.856L853.333333 746.666667v-341.333334a64 64 0 0 0-57.856-63.701333L789.333333 341.333333zM341.333333 469.333333a42.666667 42.666667 0 0 1 42.666667 42.666667v85.333333a42.666667 42.666667 0 0 1-85.333333 0v-85.333333a42.666667 42.666667 0 0 1 42.666666-42.666667z m341.333334 0a42.666667 42.666667 0 0 1 42.666666 42.666667v85.333333a42.666667 42.666667 0 0 1-85.333333 0v-85.333333a42.666667 42.666667 0 0 1 42.666667-42.666667z"></path>
+                </svg>
+            </a>
+            <a href="https://otokonoizumi.github.io" target="_blank" class="social-link github" title="GitHub">
+                <svg viewBox="0 0 16 16">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+            <a href="https://x.com/Fisheam" target="_blank" class="social-link twitter" title="Twitter">
+                <svg viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
