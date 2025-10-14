@@ -8,9 +8,9 @@
 
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/logaoplejbodjhnogdndgllocmpmlako?label=Chrome%20Web%20Store&color=blue)](https://chromewebstore.google.com/detail/logaoplejbodjhnogdndgllocmpmlako)
 [![Chrome Web Store Users](https://img.shields.io/chrome-web-store/users/logaoplejbodjhnogdndgllocmpmlako?label=Active%20Users&color=green)](https://chromewebstore.google.com/detail/logaoplejbodjhnogdndgllocmpmlako)
-[![GitHub stars](https://img.shields.io/github/stars/OtokoNoIzumi/grok-spirit?color=yellow&label=GitHub%20Stars)](https://github.com/OtokoNoIzumi/grok_spirit/stargazers)
-[![GitHub license](https://img.shields.io/github/license/OtokoNoIzumi/grok-spirit?color=blue)](https://github.com/OtokoNoIzumi/grok_spirit/blob/main/LICENSE)
-[![GitHub last commit](https://img.shields.io/github/last-commit/OtokoNoIzumi/grok-spirit)](https://github.com/OtokoNoIzumi/grok_spirit/commits)
+[![GitHub stars](https://img.shields.io/github/stars/OtokoNoIzumi/grok_spirit?color=yellow&label=GitHub%20Stars)](https://github.com/OtokoNoIzumi/grok_spirit/stargazers)
+[![GitHub license](https://img.shields.io/github/license/OtokoNoIzumi/grok_spirit?color=blue)](https://github.com/OtokoNoIzumi/grok_spirit/blob/main/LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/OtokoNoIzumi/grok_-_spirit)](https://github.com/OtokoNoIzumi/grok_spirit/commits)
 
 **A Chrome extension that reveals and allows editing of Grok Imagen prompt parameters**
 

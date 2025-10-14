@@ -8,9 +8,9 @@
 
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/logaoplejbodjhnogdndgllocmpmlako?label=Chrome%20商店版本&color=blue)](https://chromewebstore.google.com/detail/logaoplejbodjhnogdndgllocmpmlako)
 [![Chrome Web Store Users](https://img.shields.io/chrome-web-store/users/logaoplejbodjhnogdndgllocmpmlako?label=活跃用户&color=green)](https://chromewebstore.google.com/detail/logaoplejbodjhnogdndgllocmpmlako)
-[![GitHub stars](https://img.shields.io/github/stars/OtokoNoIzumi/grok-spirit?color=yellow&label=GitHub%20Stars)](https://github.com/OtokoNoIzumi/grok_spirit/stargazers)
-[![GitHub license](https://img.shields.io/github/license/OtokoNoIzumi/grok-spirit?color=blue)](https://github.com/OtokoNoIzumi/grok_spirit/blob/main/LICENSE)
-[![GitHub last commit](https://img.shields.io/github/last-commit/OtokoNoIzumi/grok-spirit)](https://github.com/OtokoNoIzumi/grok_-_spirit/commits)
+[![GitHub stars](https://img.shields.io/github/stars/OtokoNoIzumi/grok_spirit?color=yellow&label=GitHub%20Stars)](https://github.com/OtokoNoIzumi/grok_spirit/stargazers)
+[![GitHub license](https://img.shields.io/github/license/OtokoNoIzumi/grok_-_spirit?color=blue)](https://github.com/OtokoNoIzumi/grok_spirit/blob/main/LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/OtokoNoIzumi/grok_-_spirit)](https://github.com/OtokoNoIzumi/grok_spirit/commits)
 
 **一个Chrome扩展，用于显示和编辑Grok Imagen提示参数**
 
