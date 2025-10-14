@@ -57,18 +57,27 @@ Click the button below to install directly from Chrome Web Store:
 
 ### Basic Operations
 
-1. **🎬 Parameter Viewing**
-   - On Grok Imagen page, the extension automatically displays complete prompt parameter structure
-   - All parameters are presented in a visual way
+1. **🔍 Parameter Discovery**
+   - Visit grok.com/imagine and generate a video
+   - The extension automatically captures and displays the complete prompt structure used for generation
+   - View detailed parameters including camera settings, lighting, motion, and scene composition
 
-2. **⚙️ Parameter Editing**
-   - Modify parameter values directly in the interface
-   - Real-time preview of modifications
-   - Support for custom and preset prompt modes
+2. **✏️ Parameter Editing**
+   - Modify any parameter value directly in the interface
+   - Experiment with different camera angles, lighting conditions, and motion settings
+   - Changes are applied in real-time for immediate testing
 
-3. **💾 Content Download**
-   - Download generated video content
-   - Automatically match related metadata
+3. **💾 Content Management**
+   - Download generated videos with matching metadata filenames
+   - Save and reuse your favorite parameter combinations
+   - Build a personal library of effective prompt structures
+
+### Advanced Features
+
+- **🎯 Preset Support**: Works with both custom prompts and official preset parameters
+- **🔄 Real-time Injection**: Modify parameters without regenerating from scratch
+- **📊 Structure Analysis**: Understand how Grok processes your prompts internally
+- **🎨 Meta Prompting**: Use discovered structures as templates for new creations
 
 ## 🤝 Contributing
 
