@@ -14,6 +14,8 @@
 
 **A Chrome extension that reveals and allows editing of Grok Imagen prompt parameters**
 
+![Grok Spirit Screenshot](https://otokonoizumi.github.io/media/grok%20spirit.png)
+
 [🏪 Chrome Web Store](https://chromewebstore.google.com/detail/logaoplejbodjhnogdndgllocmpmlako) · [📋 Usage Guide](#usage-guide) · [🛠️ Local Installation](#local-installation) · [❓ Issues](https://github.com/OtokoNoIzumi/grok_spirit/issues)
 
 </div>

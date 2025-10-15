@@ -14,6 +14,8 @@
 
 **一个Chrome扩展，用于显示和编辑Grok Imagen提示参数**
 
+![Grok Spirit 功能截图](https://otokonoizumi.github.io/media/grok%20spirit.png)
+
 [🏪 Chrome商店安装](https://chromewebstore.google.com/detail/logaoplejbodjhnogdndgllocmpmlako) · [📋 使用说明](#使用说明) · [🛠️ 本地安装](#本地安装) · [❓ 问题反馈](https://github.com/OtokoNoIzumi/grok_spirit/issues)
 
 </div>
