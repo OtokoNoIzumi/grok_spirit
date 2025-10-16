@@ -2797,6 +2797,131 @@ function addStyles() {
       background: #218838;
     }
 
+    @media (prefers-color-scheme: dark) {
+      #grok-spirit-result-panel {
+        background: #2d2d2d !important;
+        border-color: #444 !important;
+        color: #f1f1f1 !important;
+      }
+
+      .grok-spirit-name,
+      .grok-spirit-section-title,
+      .grok-spirit-key,
+      .grok-spirit-dialogue-field label,
+      .grok-spirit-json-header h4 {
+        color: #f1f1f1;
+      }
+
+      .grok-spirit-time,
+      .grok-spirit-toggle {
+        color: #aaa;
+      }
+
+      .grok-spirit-section,
+      .grok-spirit-dialogue-item,
+      .grok-spirit-readonly-list-item {
+        border-color: #444;
+      }
+
+      .grok-spirit-section-header {
+        background: #3c3c3c;
+        border-bottom-color: #444;
+      }
+
+      .grok-spirit-section-header:hover {
+        background: #555;
+      }
+
+      .grok-spirit-section-content,
+      .grok-spirit-value,
+      .grok-spirit-original-prompt,
+      .grok-spirit-custom-input,
+      .grok-spirit-dropdown,
+      .grok-spirit-dialogue-character,
+      .grok-spirit-dialogue-time,
+      .grok-spirit-dialogue-emotion,
+      .grok-spirit-dialogue-accent,
+      .grok-spirit-dialogue-language,
+      .grok-spirit-dialogue-type,
+      .grok-spirit-dialogue-content,
+      .grok-spirit-readonly-list-content-text,
+      .grok-spirit-field-undo,
+      .grok-spirit-toggle-btn {
+        background: #222;
+        color: #f1f1f1;
+        border-color: #444;
+      }
+      
+      .grok-spirit-value:focus,
+      .grok-spirit-readonly-list-content-text:focus,
+      .grok-spirit-custom-input:focus,
+      .grok-spirit-dialogue-character:focus,
+      .grok-spirit-dialogue-time:focus,
+      .grok-spirit-dialogue-emotion:focus,
+      .grok-spirit-dialogue-accent:focus,
+      .grok-spirit-dialogue-language:focus,
+      .grok-spirit-dialogue-content:focus {
+        border-color: #58a6ff;
+        box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.25);
+      }
+
+      .grok-spirit-json,
+      .grok-spirit-dialogue-item,
+      .grok-spirit-readonly-list-item {
+        border-top-color: #444;
+        background: #3c3c3c;
+      }
+
+      .grok-spirit-json-text {
+        background: #222;
+        color: #f1f1f1;
+        border-color: #444;
+      }
+
+      .grok-spirit-btn {
+        background: #3c3c3c;
+        color: #f1f1f1;
+        border-color: #555;
+      }
+
+      .grok-spirit-btn:hover {
+        background: #555;
+        border-color: #777;
+      }
+      
+      .grok-spirit-toggle-btn:hover {
+        background: #555;
+      }
+
+      .grok-spirit-toggle-btn.active {
+        background: #58a6ff;
+        color: #fff;
+        border-color: #58a6ff;
+      }
+
+      .grok-spirit-scrollable::-webkit-scrollbar-track {
+        background: #2d2d2d;
+      }
+
+      .grok-spirit-scrollable::-webkit-scrollbar-thumb {
+        background: #555;
+      }
+
+      .grok-spirit-scrollable::-webkit-scrollbar-thumb:hover {
+        background: #777;
+      }
+      
+      .grok-spirit-dropdown optgroup {
+        background: #2d2d2d;
+        color: #f1f1f1;
+      }
+
+      .grok-spirit-no-dialogue,
+      .grok-spirit-no-readonly-list {
+        background: #2d2d2d;
+        color: #aaa;
+      }
+    }
   `;
 
   document.head.appendChild(style);
