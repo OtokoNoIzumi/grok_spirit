@@ -77,7 +77,7 @@ function initializePlugin() {
   console.log('Initializing Grok Spirit on:', currentUrl);
 
   // Check if this is a grok.com page
-  if (!currentUrl.includes('grok.com')) {
+  if (!currentUrl.includes('grok.com/imagine')) {
     return;
   }
 
@@ -113,21 +113,10 @@ function checkUrlCache() {
 
   let cached = localStorage.getItem(urlKey);
 
-  // If not found with normalized URL, try with original URL (for backward compatibility)
-  if (!cached) {
-    const originalUrlKey = `grok_video_${currentUrl}`;
-    cached = localStorage.getItem(originalUrlKey);
-    if (cached) {
-      // Migrate to new key format
-      localStorage.setItem(urlKey, cached);
-      localStorage.removeItem(originalUrlKey);
-    }
-  }
-
   if (cached) {
     try {
       cachedVideoData = JSON.parse(cached);
-      console.log('Loaded cached video data for URL:', currentUrl);
+      console.log('Loaded cached video data for URL:', currentUrl, cachedVideoData);
       showResultPanel();
     } catch (e) {
       console.error('Failed to parse cached data:', e);
@@ -182,14 +171,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Handle detected video
 function handleVideoDetected(videoInfo) {
+  console.log('[DEBUG] handleVideoDetected called with videoInfo:', videoInfo);
+
   // Extract original prompt from the response
   const originalPrompt = extractOriginalPrompt(videoInfo);
   videoInfo.originalPrompt = originalPrompt;
-
-  // Parse videoUrl from the response if available (100% completion)
-  if (videoInfo.videoUrl) {
-    // videoUrl is already in videoInfo, no need to parse further
-  }
 
   // Parse system options from original prompt
   parseSystemOptionsFromPrompt(originalPrompt);
@@ -427,9 +413,11 @@ function showResultPanel(retryCount = 0) {
     resultPanel = null;
   }
 
-  // Find the target container
+  // Find target container and operation box
   const targetContainer = findTargetContainer();
-  if (!targetContainer) {
+  const operationBox = findOperationBox(targetContainer);
+
+  if (!targetContainer || !operationBox) {
     // Retry up to 5 times with increasing delay
     if (retryCount < 5) {
       setTimeout(() => {
@@ -442,38 +430,36 @@ function showResultPanel(retryCount = 0) {
   // Create result panel
   resultPanel = createResultPanel();
 
-  // Insert as a new row after the operation box
-  const operationBox = targetContainer.querySelector('.flex.justify-between.gap-5');
-  if (operationBox) {
-    // Insert after the operation box container
-    operationBox.parentNode.insertBefore(resultPanel, operationBox.nextSibling);
-  } else {
-    // Fallback: append to the end
-    targetContainer.appendChild(resultPanel);
-  }
+  // Insert after the operation box
+  operationBox.parentNode.insertBefore(resultPanel, operationBox.nextSibling);
 
   // Add event listeners
   addPanelEventListeners();
 }
 
-// Find the target container (the operation box)
+// Find the target container (基于video元素)
 function findTargetContainer() {
-  // Look for the specific container structure
-  const containers = document.querySelectorAll('.flex.justify-between.gap-5');
+  // 1. 找video元素（视频页面的核心标识）
+  const video = document.querySelector('video');
+  if (!video) return null;
 
-  for (let container of containers) {
-    // Check if this container has the operation box structure
-    const hasOperationBox = container.querySelector('textarea[placeholder*="video"]') ||
-                           container.querySelector('button[aria-label*="Generate video"]') ||
-                           container.querySelector('button[aria-label*="Generate video"]');
+  // 2. 找到video的父容器（article）
+  const container = video.closest('article');
+  return container;
+}
 
-    if (hasOperationBox) {
-      // Return the parent container that can hold a new row
-      return container.parentElement;
-    }
+// Find the operation box (支持传参避免重复查找)
+function findOperationBox(targetContainer = null) {
+  // 如果没有传入容器，则查找
+  if (!targetContainer) {
+    const video = document.querySelector('video');
+    if (!video) return null;
+    targetContainer = video.closest('article');
   }
 
-  return null;
+  // 在容器内找操作区域
+  const operationBox = targetContainer.querySelector('.flex.justify-between.gap-5');
+  return operationBox;
 }
 
 // Create the result panel
