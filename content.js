@@ -427,11 +427,31 @@ function showResultPanel(retryCount = 0) {
     return;
   }
 
-  // Create result panel
-  resultPanel = createResultPanel();
+  // Check if there are images (masonry section)
+  const masonrySection = targetContainer.querySelector('#imagine-masonry-section-0');
+  const hasImages = masonrySection && masonrySection.children.length > 0;
 
-  // Insert after the operation box
-  operationBox.parentNode.insertBefore(resultPanel, operationBox.nextSibling);
+  if (hasImages) {
+    // 有图片时：修改main布局为水平排列，在article右侧显示面板
+    const mainElement = targetContainer.closest('main');
+    if (mainElement) {
+      // 这是对 mainElement 的样式调整，与 resultPanel 的定位和 flex 上下文相关
+      mainElement.style.display = 'flex';
+      mainElement.style.flexDirection = 'row';
+      mainElement.style.alignItems = 'flex-start';
+      mainElement.style.gap = '20px';
+      mainElement.style.maxWidth = '1400px'; // 示例值，根据你的设计调整，可以更大或更小
+      mainElement.style.margin = '0 auto';  // 让 mainElement 在其父容器中居中显示
+
+      // 创建 side 布局的面板
+      resultPanel = createResultPanel({ layout: 'side', width: 646, maxSideWidth: 646 });
+      mainElement.appendChild(resultPanel);
+    }
+  } else {
+    // 无图片时：创建 inline 布局的面板
+    resultPanel = createResultPanel({ layout: 'inline' });
+    operationBox.parentNode.insertBefore(resultPanel, operationBox.nextSibling);
+  }
 
   // Add event listeners
   addPanelEventListeners();
@@ -462,33 +482,83 @@ function findOperationBox(targetContainer = null) {
   return operationBox;
 }
 
-// Create the result panel
-function createResultPanel() {
+/**
+ * 创建并配置结果面板元素。
+ * @param {object} options - 配置选项。
+ * @param {string} options.layout - 面板布局模式 ('inline' | 'side' | 'fixed')。
+ * @param {number} [options.width=320] - 面板的默认宽度。
+ * @param {number} [options.maxSideWidth=646] - 'side' 和 'fixed' 布局的最大宽度。
+ * @param {object} [options.content] - 要显示在面板内部的 JSON 数据。
+ * @returns {HTMLDivElement} 配置好的结果面板元素。
+ */
+function createResultPanel(options = {}) {
+  const { layout = 'inline', width = 320, maxSideWidth = 646, content } = options;
   const panel = document.createElement('div');
   panel.id = 'grok-spirit-result-panel';
-  panel.style.cssText = `
-    display: block;
-    width: 100%;
-    margin-top: 4px;
-    margin-bottom: 20px;
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    padding: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    clear: both;
-    position: relative;
-    z-index: 1;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  `;
 
-  panel.innerHTML = createPanelContent();
+  // 统一在此处设置样式，外部不得再改动面板样式
+  // 所有分支都在此函数内部，根据 layout 参数选择
+  if (layout === 'side') {
+    // 日志示例：
+    console.log('创建 side 布局的结果面板。');
+    panel.style.cssText = `
+      flex: 0 0 auto; /* 让其内容决定宽度，但受限于 max-width */
+      width: ${width}px; /* 推荐宽度 */
+      max-width: ${maxSideWidth}px; /* 强制最大宽度 */
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      word-wrap: break-word; /* 强制长文本在指定宽度内换行 */
+      overflow-wrap: break-word;
+    `;
+  } else {
+    // inline（默认）：插入在操作区后，充满容器宽度
+    // 日志示例：
+    console.log('创建 inline 布局的结果面板。');
+    panel.style.cssText = `
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      margin-bottom: 20px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      clear: both;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    `;
+  }
+
+  // 面板内部内容现在通过 createPanelContent(content) 生成
+  // 确保 createPanelContent 能够处理你的 JSON 数据
+  panel.innerHTML = createPanelContent(content);
+
+  // 添加面板特定的CSS样式，覆盖外部样式
+  const panelStyle = document.createElement('style');
+  panelStyle.textContent = `
+    #grok-spirit-result-panel .grok-spirit-body {
+      padding-bottom: 10px;
+    }
+    #grok-spirit-result-panel .grok-spirit-json {
+      margin-bottom: 10px;
+    }
+  `;
+  panel.appendChild(panelStyle);
 
   return panel;
 }
 
 // Create panel content
-function createPanelContent() {
+function createPanelContent(content = null) {
   const videoData = cachedVideoData;
   const promptObj = JSON.parse(videoData.videoPrompt);
 
@@ -499,12 +569,37 @@ function createPanelContent() {
 
   // Get saved time from videoData, if not available use current processingStartTime or current time
   let displayTime;
+  let timeToDisplay;
+
   if (videoData.processingStartTime) {
-    displayTime = new Date(videoData.processingStartTime).toLocaleTimeString();
+    timeToDisplay = new Date(videoData.processingStartTime);
   } else if (processingStartTime) {
-    displayTime = processingStartTime.toLocaleTimeString();
+    timeToDisplay = processingStartTime;
   } else {
-    displayTime = new Date().toLocaleTimeString();
+    timeToDisplay = new Date();
+  }
+
+  // Format time based on date comparison
+  const now = new Date();
+  const timeDate = timeToDisplay;
+
+  // Check if same day
+  const isSameDay = timeDate.getFullYear() === now.getFullYear() &&
+                   timeDate.getMonth() === now.getMonth() &&
+                   timeDate.getDate() === now.getDate();
+
+  // Check if same year
+  const isSameYear = timeDate.getFullYear() === now.getFullYear();
+
+  if (isSameDay) {
+    // Same day: only show time
+    displayTime = timeDate.toLocaleTimeString();
+  } else if (isSameYear) {
+    // Same year: show month-day and time
+    displayTime = `${timeDate.getMonth() + 1}/${timeDate.getDate()} ${timeDate.toLocaleTimeString()}`;
+  } else {
+    // Different year: show year-month-day and time
+    displayTime = `${timeDate.getFullYear()}/${timeDate.getMonth() + 1}/${timeDate.getDate()} ${timeDate.toLocaleTimeString()}`;
   }
 
   return `
@@ -2702,25 +2797,6 @@ function addStyles() {
       background: #218838;
     }
 
-    /* Ensure panel takes full width and new line */
-    #grok-spirit-result-panel {
-      flex: 1 1 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
-      order: 999 !important;
-      z-index: 10 !important;
-      position: relative !important;
-    }
-
-    /* Add bottom padding to prevent overlay issues */
-    #grok-spirit-result-panel .grok-spirit-body {
-      padding-bottom: 10px;
-    }
-
-    /* Ensure JSON editor has enough space */
-    #grok-spirit-result-panel .grok-spirit-json {
-      margin-bottom: 10px;
-    }
   `;
 
   document.head.appendChild(style);
