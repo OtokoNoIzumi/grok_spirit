@@ -1926,7 +1926,11 @@ function handleFill() {
   const jsonTextarea = resultPanel.querySelector('.grok-spirit-json-text');
   if (!jsonTextarea) return;
 
-  const textarea = document.querySelector('textarea[aria-label="Make a video"]');
+  // 语言无关：基于已定位的容器和操作区查找输入框
+  const targetContainer = findTargetContainer();
+  const operationBox = findOperationBox(targetContainer);
+  const textarea = operationBox ? operationBox.querySelector('textarea[aria-required="true"]') : null;
+
   if (textarea) {
     textarea.value = jsonTextarea.textContent;
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
