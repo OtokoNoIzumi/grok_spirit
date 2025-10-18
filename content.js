@@ -1,6 +1,23 @@
 // Grok Spirit - Content Script
 console.log('Grok Spirit content script loaded');
 
+// 统一时间格式化函数
+function formatTime(date = new Date()) {
+  return date.toLocaleTimeString(undefined, {hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'});
+}
+
+// 本地完整时间（不依赖语言环境），用于下载与持久化显示
+function formatFullDateTime(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+  return `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
+}
+
 let currentUrl = window.location.href;
 let cachedVideoData = null;
 let resultPanel = null;
@@ -8,6 +25,8 @@ let isProcessing = false;
 let processingStatus = null;
 let processingStartTime = null; // Record processing start time
 let cachedIconUrl = null; // Cache icon URL
+let processingVideoData = null; // Store video data during processing, independent of URL changes
+let processingStartTs = null; // Epoch milliseconds baseline for processing start
 
 // Field type configuration for different input types
 const FIELD_TYPES = {
@@ -113,14 +132,40 @@ function checkUrlCache() {
 
   let cached = localStorage.getItem(urlKey);
 
+  console.log(`[${formatTime()}] Checking cache for key:`, urlKey);
+
+  // Also check all localStorage keys for debugging
+  // const allKeys = Object.keys(localStorage);
+  // const grokKeys = allKeys.filter(key => key.startsWith('grok_video_'));
+  // console.log(`[${formatTime()}] All localStorage keys:`, allKeys.length);
+  // console.log(`[${formatTime()}] Grok video keys:`, grokKeys);
+
   if (cached) {
     try {
       cachedVideoData = JSON.parse(cached);
-      console.log('Loaded cached video data for URL:', currentUrl, cachedVideoData);
+
+      // Ensure originalPrompt is properly handled when loading from cache
+      if (cachedVideoData.originalPrompt && typeof cachedVideoData.originalPrompt === 'string') {
+        try {
+          // Try to parse as JSON, if it fails, keep as string
+          const parsed = JSON.parse(cachedVideoData.originalPrompt);
+          if (typeof parsed === 'object' && parsed !== null) {
+            cachedVideoData.originalPrompt = parsed;
+            // console.log(`[${formatTime()}] Converted originalPrompt string back to object when loading from cache`);
+          }
+        } catch (e) {
+          // Keep as string if parsing fails
+          // console.log(`[${formatTime()}] originalPrompt is plain text, keeping as string`);
+        }
+      }
+
+      console.log(`[${formatTime()}] Loaded cached video data for URL:`, currentUrl, cachedVideoData);
       showResultPanel();
     } catch (e) {
-      console.error('Failed to parse cached data:', e);
+      console.error(`[${formatTime()}] Failed to parse cached data:`, e);
     }
+  } else {
+    console.log(`[${formatTime()}] No cache found for current URL`);
   }
 }
 
@@ -132,7 +177,7 @@ function monitorUrlChanges() {
     if (window.location.href !== lastUrl) {
       lastUrl = window.location.href;
       currentUrl = lastUrl;
-      console.log('URL changed to:', currentUrl);
+      console.log(`[${formatTime()}] URL changed to:`, currentUrl);
 
       // Hide current panel
       if (resultPanel) {
@@ -153,7 +198,7 @@ function monitorUrlChanges() {
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Content script received message:', request);
+  console.log(`[${formatTime()}] Content script received message:`, request);
 
   switch (request.action) {
     case 'videoDetected':
@@ -161,7 +206,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
     case 'videoProcessing':
-      handleVideoProcessing(request.status);
+      handleVideoProcessing(request.status, request.referer);
       sendResponse({ success: true });
       break;
     default:
@@ -171,7 +216,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Handle detected video
 function handleVideoDetected(videoInfo) {
-  console.log('[DEBUG] handleVideoDetected called with videoInfo:', videoInfo);
+  console.log(`[${formatTime()}] [DEBUG] handleVideoDetected called with videoInfo:`, videoInfo);
 
   // Extract original prompt from the response
   const originalPrompt = extractOriginalPrompt(videoInfo);
@@ -180,16 +225,37 @@ function handleVideoDetected(videoInfo) {
   // Parse system options from original prompt
   parseSystemOptionsFromPrompt(originalPrompt);
 
-  // Save processing start time to videoInfo
+  // Save processing start timestamp to videoInfo (only timestamp for persistence)
   if (processingStartTime) {
-    videoInfo.processingStartTime = processingStartTime.toISOString();
+    processingStartTs = processingStartTime.getTime();
+  }
+  if (processingStartTs) {
+    videoInfo.processingStartTs = processingStartTs;
   }
 
-  // Cache the video data
-  const normalizedUrl = getNormalizedUrl(currentUrl);
+  // Use initial URL for caching if available, otherwise use current URL
+  const cacheUrl = processingVideoData ? processingVideoData.initialUrl : currentUrl;
+  const normalizedUrl = getNormalizedUrl(cacheUrl);
   const urlKey = `grok_video_${normalizedUrl}`;
 
-  localStorage.setItem(urlKey, JSON.stringify(videoInfo));
+  console.log(`[${formatTime()}] Caching video data with key:`, urlKey, 'from URL:', cacheUrl);
+  // console.log(`[${formatTime()}] Current URL at detection time:`, currentUrl);
+  // console.log(`[${formatTime()}] ProcessingVideoData:`, processingVideoData);
+
+  // Ensure originalPrompt is a string before stringifying
+  const videoInfoForStorage = { ...videoInfo };
+  if (videoInfoForStorage.originalPrompt && typeof videoInfoForStorage.originalPrompt === 'object') {
+    videoInfoForStorage.originalPrompt = JSON.stringify(videoInfoForStorage.originalPrompt);
+    console.log(`[${formatTime()}] Converted originalPrompt object to string for storage`);
+  }
+
+  localStorage.setItem(urlKey, JSON.stringify(videoInfoForStorage));
+
+  // Verify the data was actually stored
+  const storedData = localStorage.getItem(urlKey);
+  // console.log(`[${formatTime()}] Verification - data stored successfully:`, !!storedData);
+  // console.log(`[${formatTime()}] Verification - stored data length:`, storedData ? storedData.length : 0);
+
   cachedVideoData = videoInfo;
 
   // Update processing status
@@ -227,7 +293,7 @@ function parseSystemOptionsFromPrompt(originalPrompt) {
     });
   } catch (e) {
     // If it's not JSON, it's plain text prompt - all current values are system parsed
-    console.log('Original prompt is plain text, treating all current values as system parsed');
+    // console.log('Original prompt is plain text, treating all current values as system parsed');
 
     // For plain text prompts, we need to get the current structured data
     if (cachedVideoData && cachedVideoData.videoPrompt) {
@@ -381,7 +447,9 @@ function deepEqual(obj1, obj2) {
 }
 
 // Handle video processing status
-function handleVideoProcessing(status) {
+function handleVideoProcessing(status, referer) {
+  // console.log(`[${formatTime()}] handleVideoProcessing called with status:`, status, 'referer:', referer);
+
   processingStatus = status;
 
   if (status === 'failed') {
@@ -389,9 +457,26 @@ function handleVideoProcessing(status) {
   } else {
     isProcessing = true;
 
-    // If starting processing, record start time
-    if (status === 'processing' && !processingStartTime) {
-      processingStartTime = new Date();
+    // If starting processing, record start time and use referer for caching
+    if (status === 'processing') {
+      // 最佳实践：当收到带 referer 的首次 processing 时，强制刷新基准
+      if (referer) {
+        processingStartTime = new Date();
+        processingStartTs = processingStartTime.getTime();
+        processingVideoData = {
+          initialUrl: referer
+        };
+        // console.log(`[${formatTime()}] Init processing baseline with referer:`, referer);
+      } else if (!processingStartTime) {
+        // 仍未建立基准且无 referer，回退当前 URL
+        processingStartTime = new Date();
+        processingStartTs = processingStartTime.getTime();
+        processingVideoData = {
+          initialUrl: currentUrl
+        };
+        console.log(`[${formatTime()}] Init processing baseline with current URL:`, currentUrl);
+      }
+      // console.log(`[${formatTime()}] Baseline now:`, processingVideoData);
     }
   }
 
@@ -403,6 +488,7 @@ function handleVideoProcessing(status) {
 
 // Show result panel
 function showResultPanel(retryCount = 0) {
+  // console.log(`[${formatTime()}] showResultPanel invoked`, { retryCount, hasCachedVideoData: !!cachedVideoData });
   if (!cachedVideoData) {
     return;
   }
@@ -413,13 +499,22 @@ function showResultPanel(retryCount = 0) {
     resultPanel = null;
   }
 
-  // Find target container and operation box
+  // 定位操作区域：targetContainer 仅用于加速查找，不作为渲染的前置条件
   const targetContainer = findTargetContainer();
   const operationBox = findOperationBox(targetContainer);
 
-  if (!targetContainer || !operationBox) {
-    // Retry up to 5 times with increasing delay
-    if (retryCount < 5) {
+  console.log(`[${formatTime()}] showResultPanel: container lookup`, {
+    targetContainerFound: !!targetContainer,
+    operationBoxFound: !!operationBox
+  });
+
+  // 仅在缺少 operationBox 时重试
+  if (!operationBox) {
+    if (retryCount < 6) {
+      console.log(`[${formatTime()}] showResultPanel: container missing, schedule retry`, {
+        nextRetryCount: retryCount + 1,
+        delayMs: 500 * (retryCount + 1)
+      });
       setTimeout(() => {
         showResultPanel(retryCount + 1);
       }, 500 * (retryCount + 1));
@@ -427,14 +522,20 @@ function showResultPanel(retryCount = 0) {
     return;
   }
 
-  // Check if there are images (masonry section)
-  const masonrySection = targetContainer.querySelector('#imagine-masonry-section-0');
+  // Check if there are images (masonry section) - 与容器解耦
+  const masonrySection = document.querySelector('#imagine-masonry-section-0');
   const hasImages = masonrySection && masonrySection.children.length > 0;
 
+  console.log(`[${formatTime()}] showResultPanel: layout decision input`, {
+    hasImages,
+    masonryChildren: masonrySection ? masonrySection.children.length : 0
+  });
+
   if (hasImages) {
-    // 有图片时：修改main布局为水平排列，在article右侧显示面板
-    const mainElement = targetContainer.closest('main');
+    // 有图片时：修改 main 布局为水平排列，在右侧显示面板
+    const mainElement = operationBox.closest('main');
     if (mainElement) {
+      console.log(`[${formatTime()}] showResultPanel: using side layout; found main element`);
       // 这是对 mainElement 的样式调整，与 resultPanel 的定位和 flex 上下文相关
       mainElement.style.display = 'flex';
       mainElement.style.flexDirection = 'row';
@@ -446,25 +547,109 @@ function showResultPanel(retryCount = 0) {
       // 创建 side 布局的面板
       resultPanel = createResultPanel({ layout: 'side', width: 646, maxSideWidth: 646 });
       mainElement.appendChild(resultPanel);
+    } else {
+      console.log(`[${formatTime()}] showResultPanel: expected main element for side layout but not found, fallback to inline`);
+      resultPanel = createResultPanel({ layout: 'inline' });
+      operationBox.parentNode.insertBefore(resultPanel, operationBox.nextSibling);
     }
   } else {
     // 无图片时：创建 inline 布局的面板
+    console.log(`[${formatTime()}] showResultPanel: using inline layout`);
     resultPanel = createResultPanel({ layout: 'inline' });
     operationBox.parentNode.insertBefore(resultPanel, operationBox.nextSibling);
   }
 
   // Add event listeners
   addPanelEventListeners();
+  // 面板已就绪后，停止视频的高频诊断日志以避免干扰
+  try {
+    const video = document.querySelector('video');
+    if (video) {
+      disableVideoDebugLogging(video);
+    }
+  } catch (e) {
+    console.log(`[${formatTime()}] [video] detach logging error`, e);
+  }
+}
+
+// Ensure video debug logging is attached once
+function ensureVideoDebugLogging(video) {
+  try {
+    if (!video) return;
+    if (video.__gsDebugLogAttached) return;
+    Object.defineProperty(video, '__gsDebugLogAttached', { value: true, writable: false });
+
+    const log = (eventType) => {
+      console.log(`[${formatTime()}][video]`, {
+        event: eventType,
+        readyState: video.readyState,
+        networkState: video.networkState,
+        paused: video.paused,
+        currentTime: video.currentTime,
+        src: video.currentSrc || video.src || null
+      });
+    };
+
+    const events = [
+      'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough',
+      'play', 'playing', 'pause', 'waiting', 'stalled', 'progress', 'error',
+      'emptied', 'ratechange', 'seeked', 'seeking', 'suspend', 'timeupdate',
+      'volumechange', 'durationchange'
+    ];
+
+    const handlers = {};
+    events.forEach((evt) => {
+      const handler = () => log(evt);
+      handlers[evt] = handler;
+      video.addEventListener(evt, handler);
+    });
+    // 保存处理器，便于后续完全解绑
+    Object.defineProperty(video, '__gsDebugHandlers', { value: handlers, writable: false });
+
+    log('attach');
+  } catch (e) {
+    console.log('[GS][video] attach logging failed', e);
+  }
+}
+
+// 解绑视频诊断日志，避免在业务完成后持续刷屏
+function disableVideoDebugLogging(video) {
+  try {
+    if (!video) return;
+    if (video.__gsDebugLogDetached) return;
+
+    const handlers = video.__gsDebugHandlers;
+    if (handlers) {
+      Object.keys(handlers).forEach((evt) => {
+        const handler = handlers[evt];
+        if (handler) {
+          video.removeEventListener(evt, handler);
+        }
+      });
+    }
+
+    Object.defineProperty(video, '__gsDebugLogDetached', { value: true, writable: false });
+    console.log(`[${formatTime()}][video]`, { event: 'detach', src: video.currentSrc || video.src || null });
+  } catch (e) {
+    console.log(`[${formatTime()}][video] detach logging failed`, e);
+  }
 }
 
 // Find the target container (基于video元素)
 function findTargetContainer() {
   // 1. 找video元素（视频页面的核心标识）
+  // console.log(`[${formatTime()}] findTargetContainer: query video`);
   const video = document.querySelector('video');
-  if (!video) return null;
+  if (!video) {
+    // console.log(`[${formatTime()}] findTargetContainer: video not found`);
+    return null;
+  }
+
+  ensureVideoDebugLogging(video);
 
   // 2. 找到video的父容器（article）
   const container = video.closest('article');
+  // console.log(`[${formatTime()}] findTargetContainer: article lookup`, { found: !!container });
   return container;
 }
 
@@ -472,13 +657,37 @@ function findTargetContainer() {
 function findOperationBox(targetContainer = null) {
   // 如果没有传入容器，则查找
   if (!targetContainer) {
+    // console.log(`[${formatTime()}] findOperationBox: no container provided; query video`);
     const video = document.querySelector('video');
-    if (!video) return null;
-    targetContainer = video.closest('article');
+    if (!video) {
+      // console.log(`[${formatTime()}] findOperationBox: video not found, try gap-5`);
+      const containers = document.querySelectorAll('.flex.justify-between.gap-5');
+      for (let container of containers) {
+        // Check if this container has the operation box structure
+        const hasOperationBox = container.querySelector('textarea[aria-required="true"]');
+
+        if (hasOperationBox) {
+          // Return the parent container that can hold a new row
+          targetContainer = container.parentElement;
+          // console.log(`[${formatTime()}] findOperationBox: operation box found in container`);
+          break;
+        }
+      }
+      if (!targetContainer) {
+        // console.log(`[${formatTime()}] findOperationBox: no operation box found`);
+        return null;
+      }
+    } else {
+      ensureVideoDebugLogging(video);
+      targetContainer = video.closest('article');
+    }
+  } else {
+    // 已提供 targetContainer，直接使用
   }
 
   // 在容器内找操作区域
   const operationBox = targetContainer.querySelector('.flex.justify-between.gap-5');
+  // console.log(`[${formatTime()}] findOperationBox: operation area lookup`, { found: !!operationBox });
   return operationBox;
 }
 
@@ -500,7 +709,7 @@ function createResultPanel(options = {}) {
   // 所有分支都在此函数内部，根据 layout 参数选择
   if (layout === 'side') {
     // 日志示例：
-    console.log('创建 side 布局的结果面板。');
+    console.log(`[${formatTime()}] 创建 side 布局的结果面板。`);
     panel.style.cssText = `
       flex: 0 0 auto; /* 让其内容决定宽度，但受限于 max-width */
       width: ${width}px; /* 推荐宽度 */
@@ -520,7 +729,7 @@ function createResultPanel(options = {}) {
   } else {
     // inline（默认）：插入在操作区后，充满容器宽度
     // 日志示例：
-    console.log('创建 inline 布局的结果面板。');
+    console.log(`[${formatTime()}] 创建 inline 布局的结果面板。`);
     panel.style.cssText = `
       display: block;
       width: 100%;
@@ -567,14 +776,20 @@ function createPanelContent(content = null) {
     cachedIconUrl = 'https://otokonoizumi.github.io/grok_spirit.png';
   }
 
-  // Get saved time from videoData, if not available use current processingStartTime or current time
+  // Get saved time from videoData: prefer timestamp, fallback to ISO string (low priority), else runtime baseline
   let displayTime;
   let timeToDisplay;
 
-  if (videoData.processingStartTime) {
-    timeToDisplay = new Date(videoData.processingStartTime);
+  if (videoData.processingStartTs && typeof videoData.processingStartTs === 'number') {
+    timeToDisplay = new Date(videoData.processingStartTs);
+  } else if (videoData.processingStartTime && typeof videoData.processingStartTime === 'string') {
+    // Backward compatibility: only accept ISO string explicitly
+    const isoDate = new Date(videoData.processingStartTime);
+    timeToDisplay = isNaN(isoDate.getTime()) ? (processingStartTime || new Date()) : isoDate;
   } else if (processingStartTime) {
     timeToDisplay = processingStartTime;
+  } else if (typeof processingStartTs === 'number') {
+    timeToDisplay = new Date(processingStartTs);
   } else {
     timeToDisplay = new Date();
   }
@@ -1956,7 +2171,7 @@ function handleDownload() {
       metadata: {
         video_id: cachedVideoData.videoId,
         progress: cachedVideoData.progress,
-        download_time: new Date().toISOString(),
+        download_time: formatFullDateTime(new Date(typeof processingStartTs === 'number' ? processingStartTs : Date.now())),
         url: currentUrl
       }
     };

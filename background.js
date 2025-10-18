@@ -1,10 +1,28 @@
 // Grok Spirit - Background Service Worker
 console.log('Grok Spirit background script started');
 
+// 统一时间格式化函数
+function formatTime(date = new Date()) {
+  return date.toLocaleTimeString(undefined, {hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'});
+}
+
+// 本地完整时间（YYYY/MM/DD HH:mm:ss），与前端一致
+function formatFullDateTime(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+  return `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
+}
+
 let attachedTabs = {};
 const targetUrl = "https://grok.com/rest/app-chat/conversations/new";
 const pendingFilenames = {}; // url -> desired filename
 const desiredFilenameQueue = []; // fallback queue if URL changes after redirect
+const videoProcessingTabs = {}; // tabId -> { isProcessing: boolean, completed: boolean }
 
 // Plugin installation handler
 chrome.runtime.onInstalled.addListener((details) => {
@@ -14,11 +32,17 @@ chrome.runtime.onInstalled.addListener((details) => {
 // Auto-attach debugger to grok.com tabs
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
-    if (tab.url.includes('grok.com')) {
+    if (tab.url.includes('grok.com/imagine')) {
       console.log('Grok.com tab loaded, auto-attaching debugger:', tab.url);
       attachDebugger(tabId);
     } else if (attachedTabs[tabId]) {
-      // If tab is no longer on grok.com, detach debugger
+      // If tab is no longer on grok.com, check if video processing is complete before detaching
+      const processingState = videoProcessingTabs[tabId];
+      if (processingState && processingState.isProcessing && !processingState.completed) {
+        console.log(`Tab ${tabId} left grok.com but video processing in progress - keeping debugger attached`);
+        return;
+      }
+
       console.log('Tab left grok.com, detaching debugger:', tab.url);
       detachDebugger(tabId);
     }
@@ -35,11 +59,21 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
       return;
     }
 
-    // Detach all debuggers first
-    detachAllDebuggers();
+    // Check if any tabs are currently processing video
+    const processingTabs = Object.keys(videoProcessingTabs).filter(tabId => {
+      const state = videoProcessingTabs[tabId];
+      return state && state.isProcessing && !state.completed;
+    });
+
+    if (processingTabs.length > 0) {
+      console.log('Video processing in progress on tabs:', processingTabs, '- skipping debugger detach');
+    } else {
+      // Detach all debuggers only if no video processing is happening
+      detachAllDebuggers();
+    }
 
     // If the activated tab is grok.com, attach debugger
-    if (tab.url && tab.url.includes('grok.com')) {
+    if (tab.url && tab.url.includes('grok.com/imagine')) {
       console.log('Activated tab is grok.com, attaching debugger');
       setTimeout(() => {
         attachDebugger(activeInfo.tabId);
@@ -131,9 +165,18 @@ function detachDebugger(tabId) {
     return; // Already detached
   }
 
+  // Check if this tab is currently processing video
+  const processingState = videoProcessingTabs[tabId];
+  if (processingState && processingState.isProcessing && !processingState.completed) {
+    console.log(`Debugger detach blocked for tab ${tabId} - video processing in progress`);
+    return;
+  }
+
   chrome.debugger.detach({ tabId: tabId }, () => {
     // Always clean up state regardless of error
     delete attachedTabs[tabId];
+    // Clean up video processing state when detaching
+    delete videoProcessingTabs[tabId];
     console.log(`Debugger detached from tab ${tabId}`);
   });
 }
@@ -144,6 +187,11 @@ function detachAllDebuggers() {
   console.log('Detaching all debuggers from tabs:', tabIds);
 
   tabIds.forEach(tabId => {
+    const processingState = videoProcessingTabs[tabId];
+    if (processingState && processingState.isProcessing && !processingState.completed) {
+      console.log(`Skipping detach for tab ${tabId} - video processing in progress`);
+      return;
+    }
     detachDebugger(parseInt(tabId));
   });
 }
@@ -159,7 +207,7 @@ chrome.debugger.onDetach.addListener((source, reason) => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs.length > 0 && tabs[0].id === source.tabId) {
           chrome.tabs.get(source.tabId, (tab) => {
-            if (tab && tab.url && tab.url.includes('grok.com')) {
+            if (tab && tab.url && tab.url.includes('grok.com/imagine')) {
               console.log('Reattaching debugger after user cancellation (tab is active)');
               attachDebugger(source.tabId);
             }
@@ -177,22 +225,48 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
   // Detect video generation request
   if (method === "Network.requestWillBeSent") {
     const request = params.request;
+    // console.log(`[${formatTime()}] Network request detected:`, request.method, request.url);
+
     if (request.method === 'POST' && request.url.includes('grok.com/rest/app-chat/conversations')) {
+      // console.log(`[${formatTime()}] POST request to conversations endpoint detected`);
+
       // Check if request body contains videoGen
       if (request.postData) {
+        console.log(`[${formatTime()}] Request has postData, checking for videoGen...`);
         try {
           // postData can be string or object
           const postDataStr = typeof request.postData === 'string' ? request.postData : request.postData.text || JSON.stringify(request.postData);
           const requestBody = JSON.parse(postDataStr);
+          console.log(`[${formatTime()}] Parsed request body:`, requestBody);
+
           if (requestBody.toolOverrides && requestBody.toolOverrides.videoGen === true) {
+            console.log(`[${formatTime()}] Video generation request detected!`);
+
+            // Mark this tab as processing video
+            videoProcessingTabs[source.tabId] = {
+              isProcessing: true,
+              completed: false
+            };
+
+            // Get referer from request headers
+            console.log(`[${formatTime()}] Request headers:`, request.headers);
+            const referer = request.headers.Referer || request.headers.referer;
+            console.log(`[${formatTime()}] Tab ${source.tabId} started video processing`);
+            console.log(`[${formatTime()}] Tab ${source.tabId} referer:`, referer);
+
             chrome.tabs.sendMessage(source.tabId, {
               action: 'videoProcessing',
-              status: 'processing'
-            }).catch(err => console.log('[BG] Failed to send initial processing status:', err));
+              status: 'processing',
+              referer: referer
+            }).catch(err => console.log(`[${formatTime()}] [BG] Failed to send initial processing status:`, err));
+          } else {
+            console.log(`[${formatTime()}] No videoGen in toolOverrides:`, requestBody.toolOverrides);
           }
         } catch (e) {
-          // Ignore parsing errors
+          console.log(`[${formatTime()}] Error parsing request body:`, e);
         }
+      } else {
+        console.log(`[${formatTime()}] No postData in request`);
       }
     }
   }
@@ -209,6 +283,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
           // Parse streaming response (multiple JSON objects separated by newlines)
           const lines = response.body.split('\n');
           let hasVideoData = false;
+          let sentFailure = false;
 
           let fullResponseData = null;
           let videoInfo = null;
@@ -218,6 +293,26 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
             if (line.trim() === '') return;
 
             const data = JSON.parse(line);
+
+            // Handle error payloads like {"error":{"code":8,"message":"Too many requests","details":[]}}
+            if (!sentFailure && data && data.error) {
+              sentFailure = true;
+              if (videoProcessingTabs[source.tabId]) {
+                videoProcessingTabs[source.tabId].completed = true;
+                console.log(`Tab ${source.tabId} video processing failed (error payload)`);
+              }
+
+              chrome.tabs.sendMessage(source.tabId, {
+                action: 'videoProcessing',
+                status: 'failed',
+                error: {
+                  code: data.error.code,
+                  message: data.error.message
+                },
+                ts: formatTime()
+              }).catch(err => console.log('Failed to send failed status:', err));
+              return;
+            }
 
             // Store the full response data for potential original prompt extraction
             if (data?.result?.response) {
@@ -240,6 +335,12 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
                   // Successfully completed
                   hasVideoData = true;
 
+                  // Mark video processing as completed
+                  if (videoProcessingTabs[source.tabId]) {
+                    videoProcessingTabs[source.tabId].completed = true;
+                    console.log(`Tab ${source.tabId} video processing completed`);
+                  }
+
                   // Create enhanced video info with full response data and original prompt
                   const enhancedVideoInfo = {
                     ...currentVideoInfo,
@@ -257,18 +358,16 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
                   }).catch(err => console.log('Failed to send message to content script:', err));
                 } else {
                   // Failed: progress=100 but no videoUrl
+                  // Mark video processing as completed (even if failed)
+                  if (videoProcessingTabs[source.tabId]) {
+                    videoProcessingTabs[source.tabId].completed = true;
+                    console.log(`Tab ${source.tabId} video processing failed but marked as completed`);
+                  }
+
                   chrome.tabs.sendMessage(source.tabId, {
                     action: 'videoProcessing',
                     status: 'failed'
                   }).catch(err => console.log('Failed to send failed status:', err));
-                }
-              } else if (currentVideoInfo.progress !== undefined && currentVideoInfo.progress < 100) {
-                // Only send processing status if we haven't sent it yet for this request
-                if (!hasVideoData) {
-                  chrome.tabs.sendMessage(source.tabId, {
-                    action: 'videoProcessing',
-                    status: 'processing'
-                  }).catch(err => console.log('Failed to send processing status:', err));
                 }
               }
             }
@@ -302,7 +401,7 @@ async function downloadVideoWithMeta(videoInfo) {
       metadata: {
         video_id: videoId,
         progress: videoInfo.progress,
-        download_time: new Date().toISOString(),
+        download_time: formatFullDateTime(new Date()),
         url: videoInfo.pageUrl,
         video_url: relativeVideoPath
       }
