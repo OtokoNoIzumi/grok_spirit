@@ -711,19 +711,18 @@ function createResultPanel(options = {}) {
     // 日志示例：
     console.log(`[${formatTime()}] 创建 side 布局的结果面板。`);
     panel.style.cssText = `
-      flex: 0 0 auto; /* 让其内容决定宽度，但受限于 max-width */
-      width: ${width}px; /* 推荐宽度 */
-      max-width: ${maxSideWidth}px; /* 强制最大宽度 */
+      flex: 0 0 auto;
+      width: ${width}px;
+      max-width: ${maxSideWidth}px;
       max-height: calc(100vh - 40px);
       overflow-y: auto;
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
+      border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 12px;
       padding: 16px;
       margin-top: 16px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      word-wrap: break-word; /* 强制长文本在指定宽度内换行 */
+      word-wrap: break-word;
       overflow-wrap: break-word;
     `;
   } else {
@@ -735,8 +734,7 @@ function createResultPanel(options = {}) {
       width: 100%;
       margin-top: 4px;
       margin-bottom: 20px;
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
+      border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 12px;
       padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1421,7 +1419,7 @@ function createJsonEditor(promptObj) {
   return `
     <div class="grok-spirit-json">
       <div class="grok-spirit-json-header">
-        <h4 style="margin: 0; color: #495057; font-size: 14px; font-weight: 600;">Structured Data</h4>
+        <h4 style="margin: 0; font-size: 14px; font-weight: 600;">Structured Data</h4>
         <div class="grok-spirit-json-actions">
           <button class="grok-spirit-btn grok-spirit-btn-undo" title="Undo changes" style="display: none;">↶ Undo</button>
           <button class="grok-spirit-btn grok-spirit-btn-fill" title="Fill to input">📝 Fill</button>
@@ -2427,17 +2425,17 @@ function addStyles() {
     }
 
     .grok-spirit-scrollable::-webkit-scrollbar-track {
-      background: #f1f1f1;
+      opacity: 0.1;
       border-radius: 3px;
     }
 
     .grok-spirit-scrollable::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
+      opacity: 0.5;
       border-radius: 3px;
     }
 
     .grok-spirit-scrollable::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8;
+      opacity: 0.7;
     }
 
     .grok-spirit-section {
@@ -2448,7 +2446,6 @@ function addStyles() {
     }
 
     .grok-spirit-section-header {
-      background: #f8f9fa;
       padding: 8px 12px;
       cursor: pointer;
       display: flex;
@@ -2458,25 +2455,23 @@ function addStyles() {
     }
 
     .grok-spirit-section-header:hover {
-      background: #e9ecef;
+      opacity: 0.8;
     }
 
     .grok-spirit-section-title {
       margin: 0;
       font-size: 13px;
       font-weight: 600;
-      color: #495057;
     }
 
     .grok-spirit-toggle {
       font-size: 12px;
-      color: #6c757d;
+      opacity: 0.7;
       transition: transform 0.2s;
     }
 
     .grok-spirit-section-content {
       padding: 8px 12px;
-      background: white;
     }
 
     .grok-spirit-header {
@@ -2488,13 +2483,12 @@ function addStyles() {
 
     .grok-spirit-name {
       font-weight: 600;
-      color: #495057;
       font-size: 14px;
     }
 
     .grok-spirit-time {
       font-size: 12px;
-      color: #6c757d;
+      opacity: 0.7;
     }
 
     .grok-spirit-status {
@@ -2556,7 +2550,7 @@ function addStyles() {
     }
 
     .grok-spirit-status-unchanged {
-      color: #6c757d;
+      opacity: 0.5;
     }
 
     .grok-spirit-status-changed {
@@ -2566,23 +2560,21 @@ function addStyles() {
     .grok-spirit-field-undo {
       padding: 2px 6px;
       border: 1px solid #ced4da;
-      background: white;
       border-radius: 3px;
       cursor: pointer;
       font-size: 11px;
-      color: #6c757d;
+      opacity: 0.7;
       transition: all 0.2s;
     }
 
     .grok-spirit-field-undo:hover {
-      background: #f8f9fa;
+      opacity: 1;
       border-color: #dc3545;
       color: #dc3545;
     }
 
     .grok-spirit-key {
       font-weight: 500;
-      color: #495057;
       min-width: 120px;
       font-size: 13px;
     }
@@ -2593,7 +2585,6 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 13px;
-      background: white;
     }
 
     .grok-spirit-value:focus {
@@ -2608,7 +2599,6 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 13px;
-      background: white;
       min-height: 20px;
       max-height: 200px;
       white-space: pre-wrap;
@@ -2619,7 +2609,7 @@ function addStyles() {
     }
 
     .grok-spirit-json {
-      border-top: 1px solid #e9ecef;
+      border-top: 1px solid rgba(128, 128, 128, 0.1);
       padding-top: 12px;
     }
 
@@ -2638,7 +2628,6 @@ function addStyles() {
     .grok-spirit-btn {
       padding: 4px 8px;
       border: 1px solid #ced4da;
-      background: white;
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
@@ -2646,7 +2635,7 @@ function addStyles() {
     }
 
     .grok-spirit-btn:hover {
-      background: #f8f9fa;
+      opacity: 0.8;
       border-color: #007bff;
     }
 
@@ -2707,7 +2696,6 @@ function addStyles() {
       border-radius: 4px;
       font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
       font-size: 12px;
-      background: #f8f9fa;
       resize: vertical;
     }
 
@@ -2720,7 +2708,6 @@ function addStyles() {
     .grok-spirit-toggle-btn {
       padding: 6px 12px;
       border: 1px solid #ced4da;
-      background: white;
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
@@ -2728,7 +2715,7 @@ function addStyles() {
     }
 
     .grok-spirit-toggle-btn:hover {
-      background: #f8f9fa;
+      opacity: 0.8;
       border-color: #007bff;
     }
 
@@ -2750,7 +2737,6 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 13px;
-      background: white;
     }
 
     .grok-spirit-custom-input {
@@ -2758,7 +2744,6 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 13px;
-      background: white;
     }
 
     /* Clear custom button */
@@ -2782,8 +2767,6 @@ function addStyles() {
     .grok-spirit-dropdown optgroup {
       font-weight: bold;
       font-size: 12px;
-      color: #495057;
-      background: #f8f9fa;
     }
 
     .grok-spirit-dropdown optgroup[label="Plugin Presets"] {
@@ -2864,7 +2847,7 @@ function addStyles() {
       border: 1px solid #e9ecef;
       border-radius: 6px;
       padding: 8px;
-      background: #f8f9fa;
+      opacity: 0.95;
     }
 
     .grok-spirit-readonly-list-content-text {
@@ -2873,7 +2856,6 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 12px;
-      background: white;
       min-height: 60px;
       resize: vertical;
       font-family: inherit;
@@ -2887,10 +2869,9 @@ function addStyles() {
 
     .grok-spirit-no-readonly-list {
       text-align: center;
-      color: #6c757d;
+      opacity: 0.6;
       font-style: italic;
       padding: 20px;
-      background: #f8f9fa;
       border-radius: 4px;
     }
 
@@ -2898,7 +2879,7 @@ function addStyles() {
       border: 1px solid #e9ecef;
       border-radius: 6px;
       padding: 12px;
-      background: #f8f9fa;
+      opacity: 0.95;
       position: relative;
     }
 
@@ -2942,7 +2923,6 @@ function addStyles() {
     .grok-spirit-dialogue-field label {
       font-size: 11px;
       font-weight: 500;
-      color: #495057;
     }
 
     .grok-spirit-dialogue-character,
@@ -2954,7 +2934,6 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 12px;
-      background: white;
     }
 
     .grok-spirit-dialogue-type {
@@ -2962,7 +2941,6 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 12px;
-      background: white;
     }
 
     .grok-spirit-dialogue-field-checkbox {
@@ -2988,17 +2966,15 @@ function addStyles() {
       border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 12px;
-      background: white;
       min-height: 40px;
       resize: vertical;
     }
 
     .grok-spirit-no-dialogue {
       text-align: center;
-      color: #6c757d;
+      opacity: 0.6;
       font-style: italic;
       padding: 20px;
-      background: #f8f9fa;
       border-radius: 4px;
     }
 
@@ -3016,6 +2992,44 @@ function addStyles() {
       background: #218838;
     }
 
+    /* Theme sync: set color-scheme and adjust borders for better visibility */
+    #grok-spirit-result-panel[data-theme="light"] {
+      color-scheme: light;
+    }
+
+    #grok-spirit-result-panel[data-theme="dark"] {
+      color-scheme: dark;
+    }
+
+    /* Dark theme: soften borders to match dark background */
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-section,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-section-header,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-item,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-toggle-btn,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-btn,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-readonly-list-item {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-value,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-original-prompt,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dropdown,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-custom-input,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-character,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-time,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-emotion,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-accent,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-language,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-type,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-dialogue-content,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-readonly-list-content-text,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-json-text,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-toggle-btn,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-btn,
+    #grok-spirit-result-panel[data-theme="dark"] .grok-spirit-field-undo {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
   `;
 
   document.head.appendChild(style);
@@ -3023,6 +3037,41 @@ function addStyles() {
 
 // Initialize styles
 addStyles();
+
+// ============ Theme Detection & Sync Logic ============
+function detectGrokTheme() {
+  const htmlClasses = document.documentElement.className || '';
+  return /(^|\s)dark(\s|$)/i.test(htmlClasses) ? 'dark' : 'light';
+}
+
+function applyThemeToPanel(theme) {
+  if (resultPanel) {
+    resultPanel.setAttribute('data-theme', theme);
+  }
+}
+
+function setupThemeObserver() {
+  const observer = new MutationObserver(() => {
+    const newTheme = detectGrokTheme();
+    applyThemeToPanel(newTheme);
+  });
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+  });
+}
+
+setupThemeObserver();
+
+// Hook panel creation to apply theme
+const originalCreateResultPanel = createResultPanel;
+createResultPanel = function(...args) {
+  const panel = originalCreateResultPanel.apply(this, args);
+  panel.setAttribute('data-theme', detectGrokTheme());
+  return panel;
+};
+// ============ End Theme Detection ============
 
 // Error handling
 window.addEventListener('error', (event) => {
