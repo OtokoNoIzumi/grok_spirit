@@ -147,4 +147,4 @@ Thanks to the following open source projects and developers for inspiration and 
 
 ## 📈 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=OtokoNoIzumi/grok-spirit&type=Date)](https://star-history.com/#OtokoNoIzumi/grok-spirit&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=OtokoNoIzumi/grok_spirit&type=Date)](https://star-history.com/#OtokoNoIzumi/grok_spirit&Date)
