@@ -1,5 +1,9 @@
 # Grok Video Metadata Processor
 
+*Grok视频元数据处理工具*
+
+[English](README.md) | [中文](README_zh.md)
+
 一个用于批处理Grok视频元数据的Python脚本，支持将JSON元数据嵌入到MP4视频文件中，并按照指定规则重命名文件。
 
 ## 快速开始（新手用户）

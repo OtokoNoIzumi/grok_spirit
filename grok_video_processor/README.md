@@ -1,5 +1,9 @@
 # Grok Video Metadata Processor
 
+*Grok Video Metadata Processing Tool*
+
+[English](README.md) | [中文](README_zh.md)
+
 A Python script for batch processing Grok video metadata, supporting JSON metadata embedding into MP4 video files and renaming files according to specified rules.
 
 ## Quick Start (For Beginners)
@@ -44,6 +48,11 @@ A Python script for batch processing Grok video metadata, supporting JSON metada
 ```bash
 python meta_video.py
 ```
+
+### Language Note
+⚠️ **Important**: This Python script (`meta_video.py`) uses Chinese prompts and messages. This is a personal tool primarily designed for Chinese users.
+
+**Feel free to edit** the script to translate prompts to your preferred language, or create your own localized version. The core functionality is language-independent and will work regardless of the prompt language.
 
 **Note**: The `meta_video.bat` file in the directory is the author's personal environment startup script, which depends on specific Anaconda environment configuration. You can also install and manage Python environments through Anaconda and make corresponding modifications, or ask AI to create your own personalized startup script.
 

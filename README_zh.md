@@ -138,7 +138,7 @@
 
 - [Grok](https://grok.com/) - 提供了强大的AI图像生成平台
 - Chrome扩展开发社区 - 为扩展开发提供了丰富的资源和指导
-- @nmsbnmsb1 - 暗色模式实现的初始想法和贡献
+- [@nmsbnmsb1](https://github.com/nmsbnmsb1) - 暗色模式实现的初始想法和贡献
 
 ## 📈 Star History
 

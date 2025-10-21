@@ -90,7 +90,7 @@ Click the button below to install directly from Chrome Web Store:
 
 ## 🎬 Video Metadata Processing
 
-For users who download multiple videos, we provide a Python tool for batch processing:
+For users who download multiple videos, I provide a Python tool for batch processing:
 
 ### What it does
 - **Metadata Embedding**: Embeds JSON metadata into MP4 files using FFmpeg
@@ -116,6 +116,11 @@ The tool automatically organizes your downloaded videos:
 - Adds version numbers within groups (v1, v2, etc.)
 - Final format: `grok_video_[uuid]_P1_v1.mp4`
 
+### Language Note
+⚠️ **Important**: The Python script (`meta_video.py`) currently uses Chinese prompts and messages. This is a personal tool primarily designed for Chinese users.
+
+**Feel free to edit** the script to translate prompts to your preferred language, or create your own localized version. The core functionality is language-independent and will work regardless of the prompt language.
+
 **📖 Detailed documentation**: See [`grok_video_processor/README.md`](grok_video_processor/README.md) for complete setup and usage instructions.
 
 ## 🤝 Contributing
@@ -138,7 +143,7 @@ Thanks to the following open source projects and developers for inspiration and 
 
 - [Grok](https://grok.com/) - Provides a powerful AI image generation platform
 - Chrome Extension Development Community - Provides rich resources and guidance for extension development
-- @nmsbnmsb1 - Initial dark mode implementation ideas and contributions
+- [@nmsbnmsb1](https://github.com/nmsbnmsb1) - Initial dark mode implementation ideas and contributions
 
 ## 📈 Star History
 
