@@ -1,0 +1,20 @@
+# Grok Video Metadata Processor 配置文件
+# 根据需要修改以下配置项
+
+ffmpeg_path = "E:\\Program Files\\ffmpeg.exe"
+default_input_dir = "E:\\20250825_AICG\\sub"
+default_output_dir = "E:\\20250825_AICG\\sub\\test"
+
+writer_names = ["Izumi.Qu", "Grok"]
+
+[file_naming]
+prefix = "grok_video"
+separator = "_"
+uuid_max_length = 0
+
+common_ffmpeg_paths = [
+    "C:\\ffmpeg\\bin\\ffmpeg.exe",
+    "C:\\Program Files\\ffmpeg.exe",
+    "C:\\Program Files (x86)\\ffmpeg.exe",
+    "ffmpeg"
+]
