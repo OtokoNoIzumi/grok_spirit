@@ -8,9 +8,10 @@ default_output_dir = "E:\\20250825_AICG\\sub\\test"
 writer_names = ["Izumi.Qu", "Grok"]
 
 [file_naming]
-prefix = "grok_video"
-separator = "_"
+prefix = "grok-video"
+separator = "-"
 uuid_max_length = 0
+replace_grok_video_prefix = true  # 将 grok_video_ 替换为 grok-video-
 
 common_ffmpeg_paths = [
     "C:\\ffmpeg\\bin\\ffmpeg.exe",

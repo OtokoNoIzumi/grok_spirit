@@ -14,6 +14,7 @@ import json
 import pythoncom
 import re
 import shutil
+import hashlib
 from datetime import datetime
 from collections import defaultdict
 from win32com.propsys import propsys
@@ -97,6 +98,219 @@ def extract_uuid_from_url(url, max_length=0):
             uuid = uuid[:max_length]
         return uuid
     return ""
+
+
+def apply_filename_prefix_replacement(filename, config):
+    """
+    根据配置替换文件名前缀
+    如果配置启用且文件名以 grok_video_ 开头，则替换为 grok-video-
+    """
+    replace_prefix = config.get('file_naming', {}).get('replace_grok_video_prefix', True)
+
+    if replace_prefix and filename.startswith('grok_video_'):
+        return filename.replace('grok_video_', 'grok-video-', 1)
+
+    return filename
+
+
+def load_video_prompt_templates(config_file='video_prompt_templates.json'):
+    """加载视频提示词模板配置文件"""
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"警告: 读取视频提示词模板配置文件失败: {e}")
+            return {}
+    return {}
+
+
+def save_video_prompt_templates(config, config_file='video_prompt_templates.json'):
+    """保存视频提示词模板配置文件"""
+    try:
+        # 对每个分类的模板按key排序
+        sorted_config = config.copy()
+        for category_key, category in sorted_config['categories'].items():
+            if 'templates' in category:
+                # 按key排序模板
+                sorted_templates = dict(sorted(category['templates'].items()))
+                category['templates'] = sorted_templates
+
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(sorted_config, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"保存视频提示词模板配置文件失败: {e}")
+
+
+def categorize_prompt(meta_obj):
+    """
+    根据meta_obj的original_prompt对提示词进行分类
+
+    返回: (category_key, prompt_content, prompt_key)
+    """
+    original_prompt = meta_obj.get('original_prompt', '')
+    structured_prompt = meta_obj.get('structured_prompt', {})
+
+    # 判断是否为Injection完全一致
+    if original_prompt == "Injection completely consistent":
+        category_key = "injection_consistent"
+        # 对于Injection完全一致的情况，使用structured_prompt作为内容
+        if isinstance(structured_prompt, dict):
+            prompt_content = json.dumps(structured_prompt, ensure_ascii=False, separators=(',', ':'))
+        else:
+            prompt_content = str(structured_prompt)
+    else:
+        # 非Injection完全一致的情况，使用original_prompt作为内容
+        prompt_content = str(original_prompt)
+
+        # 判断original_prompt是否为字典
+        if isinstance(original_prompt, dict):
+            category_key = "non_injection_dict"
+        else:
+            category_key = "non_injection_non_dict"
+
+    # 生成提示词key：original_prompt前5-10个字符 + 哈希值
+    prompt_key = generate_prompt_key(original_prompt, prompt_content)
+
+    return category_key, prompt_content, prompt_key
+
+
+def generate_prompt_key(original_prompt, prompt_content):
+    """
+    生成提示词key：original_prompt前5-10个合法字符 + 内容哈希值
+
+    返回: 组合的key字符串
+    """
+    # 提取original_prompt的前5-10个合法字符
+    prompt_str = str(original_prompt)
+    prefix_chars = []
+
+    for char in prompt_str:
+        if char.isalnum() or char in '_-':
+            prefix_chars.append(char)
+            if len(prefix_chars) >= 10:
+                break
+
+    # 如果合法字符不足5个，用哈希值填充
+    if len(prefix_chars) < 5:
+        content_hash = hashlib.md5(prompt_content.encode('utf-8')).hexdigest()[:8]
+        prefix_chars.extend(list(content_hash[:5-len(prefix_chars)]))
+
+    # 取前5-10个字符作为前缀
+    prefix = ''.join(prefix_chars[:10])
+
+    # 生成内容哈希值
+    content_hash = hashlib.md5(prompt_content.encode('utf-8')).hexdigest()[:8]
+
+    # 组合前缀和哈希值
+    return f"{prefix}_{content_hash}"
+
+
+def update_video_prompt_templates(meta_files_info, config_file='video_prompt_templates.json'):
+    """
+    更新视频提示词模板配置
+
+    Args:
+        meta_files_info: 元数据文件信息字典
+        config_file: 配置文件路径
+    """
+    print("\n=== 开始更新视频提示词模板配置 ===")
+
+    # 加载现有配置
+    templates_config = load_video_prompt_templates(config_file)
+
+    # 初始化配置结构
+    if 'categories' not in templates_config:
+        templates_config['categories'] = {
+            "non_injection_non_dict": {
+                "name": "非Injection完全一致且非字典类型",
+                "description": "original_prompt不是'Injection completely consistent'且original_prompt不是字典类型",
+                "priority": 1,
+                "templates": {}
+            },
+            "non_injection_dict": {
+                "name": "非Injection完全一致但为字典类型",
+                "description": "original_prompt不是'Injection completely consistent'但original_prompt是字典类型",
+                "priority": 2,
+                "templates": {}
+            },
+            "injection_consistent": {
+                "name": "Injection完全一致",
+                "description": "original_prompt是'Injection completely consistent'的情况",
+                "priority": 3,
+                "templates": {}
+            }
+        }
+
+    if 'statistics' not in templates_config:
+        templates_config['statistics'] = {
+            "total_videos": 0,
+            "total_urls": 0,
+            "last_updated": ""
+        }
+
+    # 统计信息
+    total_videos = 0
+    total_urls = set()
+
+    # 处理每个元数据文件
+    for base_name, meta_info in meta_files_info.items():
+        meta_obj = meta_info['meta_obj']
+
+        # 分类提示词
+        category_key, prompt_content, prompt_hash = categorize_prompt(meta_obj)
+
+        # 获取URL
+        url = meta_obj.get('metadata', {}).get('url', '')
+        if url:
+            total_urls.add(url)
+
+        total_videos += 1
+
+        # 更新模板配置
+        category = templates_config['categories'][category_key]
+
+        if prompt_hash not in category['templates']:
+            # 创建新模板
+            category['templates'][prompt_hash] = {
+                "prompt_content": prompt_content,
+                "video_count": 0,
+                "urls": set(),
+                "first_seen": datetime.now().isoformat(),
+                "last_seen": datetime.now().isoformat()
+            }
+
+        # 更新模板统计
+        template = category['templates'][prompt_hash]
+        template['video_count'] += 1
+        if url:
+            template['urls'].add(url)
+        template['last_seen'] = datetime.now().isoformat()
+
+    # 转换set为list以便JSON序列化
+    for category in templates_config['categories'].values():
+        for template in category['templates'].values():
+            template['urls'] = list(template['urls'])
+
+    # 更新统计信息
+    templates_config['statistics']['total_videos'] = total_videos
+    templates_config['statistics']['total_urls'] = len(total_urls)
+    templates_config['statistics']['last_updated'] = datetime.now().isoformat()
+
+    # 保存配置
+    save_video_prompt_templates(templates_config, config_file)
+
+    # 输出统计信息
+    print(f"视频提示词模板配置更新完成:")
+    print(f"  总视频数: {total_videos}")
+    print(f"  总URL数: {len(total_urls)}")
+
+    for category_key, category in templates_config['categories'].items():
+        template_count = len(category['templates'])
+        total_template_videos = sum(t['video_count'] for t in category['templates'].values())
+        print(f"  {category['name']}: {template_count} 个模板, {total_template_videos} 个视频")
+
+    print(f"配置文件已保存: {config_file}")
 
 
 def parse_download_time(download_time_str):
@@ -246,19 +460,41 @@ def process_videos():
         print(f"创建输出目录: {OUTPUT_DIR}")
         os.makedirs(OUTPUT_DIR)
 
-    # 查找所有元数据文件
+    # 查找所有元数据文件和视频文件
     meta_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(META_EXTENSION)]
+    video_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(VIDEO_EXTENSION)]
 
     if not meta_files:
         print(f"错误：在目录 '{INPUT_DIR}' 中未找到任何 '{META_EXTENSION}' 文件。")
         return
 
-    print(f"找到 {len(meta_files)} 个元数据文件，开始处理...")
+    print(f"目录统计:")
+    print(f"  - JSON文件: {len(meta_files)} 个")
+    print(f"  - MP4文件: {len(video_files)} 个")
+    print(f"\n开始处理...")
 
     # 第一步：读取所有元数据文件并检查对应的视频文件
     meta_files_info = {}
     failed_reads = []
     missing_videos = []
+    missing_json_videos = []
+
+    # 创建所有MP4文件的基础名称集合
+    all_video_base_names = set()
+    for video_filename in video_files:
+        base_name = os.path.splitext(video_filename)[0]
+        all_video_base_names.add(base_name)
+
+    # 创建所有JSON文件的基础名称集合
+    all_meta_base_names = set()
+    for meta_filename in meta_files:
+        base_name = os.path.splitext(meta_filename)[0]
+        all_meta_base_names.add(base_name)
+
+    # 找出缺少JSON的MP4文件
+    missing_json_base_names = all_video_base_names - all_meta_base_names
+    for base_name in missing_json_base_names:
+        missing_json_videos.append(f"{base_name}.mp4: 缺少对应的JSON文件")
 
     for meta_filename in meta_files:
         base_name = os.path.splitext(meta_filename)[0]
@@ -293,12 +529,22 @@ def process_videos():
         for missing in missing_videos:
             print(f"  - {missing}")
 
+    if missing_json_videos:
+        print(f"跳过: {len(missing_json_videos)} 个MP4文件缺少对应的JSON文件:")
+        for missing in missing_json_videos:
+            print(f"  - {missing}")
+
     # 计算命名信息
     naming_info = calculate_file_naming_info(meta_files_info, config)
     print(f"命名信息计算完成，共 {len(naming_info)} 个文件可处理")
 
+    # 更新视频提示词模板配置
+    update_video_prompt_templates(meta_files_info)
+
     success_count = 0
     fail_count = 0
+    raw_copy_count = 0
+    miss_json_count = 0
 
     # 只处理有命名信息的文件（即预处理阶段通过的文件）
     for base_name in naming_info.keys():
@@ -325,6 +571,8 @@ def process_videos():
         else:
             new_filename = f"{prefix}{separator}P{p_value}{separator}v{v_value}{VIDEO_EXTENSION}"
 
+        # 应用文件名前缀替换
+        new_filename = apply_filename_prefix_replacement(new_filename, config)
         output_video_path = os.path.join(OUTPUT_DIR, new_filename)
 
         # 1. 检查输出文件是否已存在，如果存在则删除
@@ -415,13 +663,95 @@ def process_videos():
             print(f"❌ {base_name}: 找不到 FFmpeg 程序")
             fail_count += 1
 
-    # 计算跳过的文件数量
-    skipped_count = len(failed_reads) + len(missing_videos)
+    # 处理缺少JSON的MP4文件 - 复制到输出目录并添加raw_前缀
+    print(f"\n开始复制缺少JSON的MP4文件...")
+    for missing_json_item in missing_json_videos:
+        # 解析文件名 (格式: "filename.mp4: 缺少对应的JSON文件")
+        filename = missing_json_item.split(':')[0]
+        base_name = os.path.splitext(filename)[0]
+        source_video_path = os.path.join(INPUT_DIR, filename)
+
+        # 生成带_raw后缀的新文件名
+        base_name_without_ext = os.path.splitext(filename)[0]
+        raw_filename = f"{base_name_without_ext}_raw.mp4"
+
+        # 应用文件名前缀替换
+        raw_filename = apply_filename_prefix_replacement(raw_filename, config)
+        output_video_path = os.path.join(OUTPUT_DIR, raw_filename)
+
+        try:
+            # 检查输出文件是否已存在，如果存在则删除
+            if os.path.exists(output_video_path):
+                os.remove(output_video_path)
+
+            # 复制文件
+            shutil.copy2(source_video_path, output_video_path)
+            print(f"📋 {base_name} -> {raw_filename}")
+            raw_copy_count += 1
+
+        except Exception as e:
+            print(f"❌ {base_name}: 复制失败 - {e}")
+            fail_count += 1
+
+    # 处理缺少视频文件的JSON文件 - 复制到输出目录并添加_miss后缀
+    print(f"\n开始处理缺少视频文件的JSON文件...")
+    for missing_video_item in missing_videos:
+        # 解析文件名 (格式: "filename: 找不到对应的视频文件")
+        base_name = missing_video_item.split(':')[0]
+        json_filename = f"{base_name}.json"
+        source_json_path = os.path.join(INPUT_DIR, json_filename)
+
+        try:
+            # 读取JSON文件内容以提取UUID
+            with open(source_json_path, 'r', encoding='utf-8') as f:
+                meta_obj = json.load(f)
+
+            # 尝试从metadata.url中提取UUID
+            url = meta_obj.get('metadata', {}).get('url', '')
+            uuid = extract_uuid_from_url(url, config.get('file_naming', {}).get('uuid_max_length', 0))
+
+            # 生成带_miss后缀的新文件名
+            if uuid:
+                miss_filename = f"{base_name}_{uuid}_miss.json"
+            else:
+                miss_filename = f"{base_name}_miss.json"
+
+            # 应用文件名前缀替换
+            miss_filename = apply_filename_prefix_replacement(miss_filename, config)
+            output_json_path = os.path.join(OUTPUT_DIR, miss_filename)
+
+            # 检查输出文件是否已存在，如果存在则删除
+            if os.path.exists(output_json_path):
+                os.remove(output_json_path)
+
+            # 复制文件
+            shutil.copy2(source_json_path, output_json_path)
+            print(f"📄 {base_name} -> {miss_filename}")
+            miss_json_count += 1
+
+        except Exception as e:
+            print(f"❌ {base_name}: 处理JSON失败 - {e}")
+            fail_count += 1
+
+    # 计算跳过的文件数量（只包括读取失败的JSON文件）
+    skipped_count = len(failed_reads)
 
     print(f"\n{'='*50}")
-    print(f"处理完成: ✅ 成功 {success_count} 个, ❌ 失败 {fail_count} 个, ⏭️ 跳过 {skipped_count} 个")
-    print(f"总计: {len(meta_files)} 个元数据文件")
-    if success_count > 0:
+    print(f"处理完成:")
+    print(f"  ✅ 成功处理: {success_count} 个 (带元数据的视频)")
+    print(f"  📋 复制原始: {raw_copy_count} 个 (_raw后缀的视频)")
+    print(f"  📄 处理JSON: {miss_json_count} 个 (_miss后缀的JSON)")
+    print(f"  ❌ 失败: {fail_count} 个")
+    print(f"  ⏭️ 跳过: {skipped_count} 个")
+    print(f"\n跳过详情:")
+    print(f"  - JSON读取失败: {len(failed_reads)} 个")
+    print(f"\n文件统计:")
+    print(f"  - 输入MP4文件: {len(video_files)} 个")
+    print(f"  - 输入JSON文件: {len(meta_files)} 个")
+    print(f"  - 输出文件总数: {success_count + raw_copy_count + miss_json_count} 个")
+    print(f"    * 视频文件: {success_count + raw_copy_count} 个")
+    print(f"    * JSON文件: {miss_json_count} 个")
+    if success_count > 0 or raw_copy_count > 0 or miss_json_count > 0:
         print(f"输出目录: {OUTPUT_DIR}")
 
 
