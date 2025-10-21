@@ -1,78 +1,78 @@
 # Grok Video Metadata Processor
 
-一个用于批处理Grok视频元数据的Python脚本，支持将JSON元数据嵌入到MP4视频文件中，并按照指定规则重命名文件。
+A Python script for batch processing Grok video metadata, supporting JSON metadata embedding into MP4 video files and renaming files according to specified rules.
 
-## 快速开始（新手用户）
+## Quick Start (For Beginners)
 
-### 前置要求
-- Windows 10/11 系统
-- 基本的计算机操作能力
+### Prerequisites
+- Windows 10/11 system
+- Basic computer operation skills
 
-### 安装步骤（预计耗时：15-30分钟）
+### Installation Steps (Estimated time: 15-30 minutes)
 
-1. **安装Python**（5-10分钟）
-   - 访问 https://www.python.org/downloads/
-   - 下载最新版本的Python（推荐3.10+）
-   - 安装时**务必勾选**"Add Python to PATH"
-   - 验证安装：打开命令提示符，输入 `python --version`
+1. **Install Python** (5-10 minutes)
+   - Visit https://www.python.org/downloads/
+   - Download the latest Python version (recommended 3.10+)
+   - **Must check** "Add Python to PATH" during installation
+   - Verify installation: Open command prompt, type `python --version`
 
-2. **安装FFmpeg**（5-10分钟）
-   - 访问 https://ffmpeg.org/download.html
-   - 下载Windows版本，解压到任意目录（如 `C:\ffmpeg`）
-   - 将 `ffmpeg.exe` 所在目录添加到系统PATH环境变量
-   - 验证安装：打开命令提示符，输入 `ffmpeg -version`
+2. **Install FFmpeg** (5-10 minutes)
+   - Visit https://ffmpeg.org/download.html
+   - Download Windows version, extract to any directory (e.g., `C:\ffmpeg`)
+   - Add the directory containing `ffmpeg.exe` to system PATH environment variable
+   - Verify installation: Open command prompt, type `ffmpeg -version`
 
-3. **下载并配置工具**（5-10分钟）
-   - 下载本工具的所有文件到同一目录
-   - 复制 `config.toml` 并根据需要修改路径设置
-   - 安装依赖：打开命令提示符，在工具目录下运行 `pip install -r requirements.txt`
+3. **Download and Configure Tool** (5-10 minutes)
+   - Download all tool files to the same directory
+   - Copy `config.toml` and modify path settings as needed
+   - Install dependencies: Open command prompt, run `pip install -r requirements.txt` in the tool directory
 
-### 重要提示
+### Important Tips
 
-**如果你是Python新手，强烈建议：**
-- 🔍 **搜索视频教程**：在B站、YouTube等平台搜索"Python安装教程"、"FFmpeg安装教程"
-- 🤖 **询问AI助手**：使用ChatGPT、Claude等AI工具获取详细的安装指导
-- 📚 **参考官方文档**：Python和FFmpeg都有详细的官方安装文档
+**If you're new to Python, we strongly recommend:**
+- 🔍 **Search video tutorials**: Look for "Python installation tutorial", "FFmpeg installation tutorial" on Bilibili, YouTube, etc.
+- 🤖 **Ask AI assistants**: Use ChatGPT, Claude and other AI tools for detailed installation guidance
+- 📚 **Refer to official documentation**: Both Python and FFmpeg have detailed official installation documentation
 
-**常见问题：**
-- PATH环境变量设置失败 → 搜索"Windows PATH环境变量设置教程"
-- pip命令不识别 → 搜索"Python pip安装教程"
-- FFmpeg找不到 → 搜索"FFmpeg Windows安装配置"
+**Common issues:**
+- PATH environment variable setup failed → Search "Windows PATH environment variable setup tutorial"
+- pip command not recognized → Search "Python pip installation tutorial"
+- FFmpeg not found → Search "FFmpeg Windows installation configuration"
 
-### 使用方法
+### Usage
 
 ```bash
 python meta_video.py
 ```
 
-**注意**：目录中的 `meta_video.bat` 文件，这是作者的个人环境启动脚本，依赖特定的Anaconda环境配置。你也可以通过Anaconda安装和管理python环境并做相应修改，或询问AI制作一个自己的个性化启动脚本。
+**Note**: The `meta_video.bat` file in the directory is the author's personal environment startup script, which depends on specific Anaconda environment configuration. You can also install and manage Python environments through Anaconda and make corresponding modifications, or ask AI to create your own personalized startup script.
 
-## 功能特性
+## Features
 
-- **元数据嵌入**：使用FFmpeg将JSON元数据写入MP4文件的comment、title、genre字段
-- **扩展属性**：使用Windows COM写入Media.Writer等扩展属性
-- **智能重命名**：根据元数据内容自动生成规范的文件名
-- **批处理支持**：一次性处理整个目录的视频文件
-- **配置化**：支持配置文件自定义路径和参数
+- **Metadata Embedding**: Uses FFmpeg to write JSON metadata into MP4 file comment, title, genre fields
+- **Extended Properties**: Uses Windows COM to write Media.Writer and other extended properties
+- **Smart Renaming**: Automatically generates standardized filenames based on metadata content
+- **Batch Processing**: Process entire directories of video files at once
+- **Configurable**: Supports configuration file customization of paths and parameters
 
-## 文件命名规则
+## File Naming Rules
 
-输出文件名格式：`grok_video_[url_uuid]_P{n}_v{m}.mp4`
+Output filename format: `grok_video_[url_uuid]_P{n}_v{m}.mp4`
 
-- **url_uuid**：从metadata.url的post后部分提取的UUID
-- **P{n}**：按input_prompt分组后的优先级编号
-- **v{m}**：同一组内按时间排序的版本号
+- **url_uuid**: UUID extracted from the post part of metadata.url
+- **P{n}**: Priority number after grouping by input_prompt
+- **v{m}**: Version number sorted by time within the same group
 
-### 分组逻辑
+### Grouping Logic
 
-1. 如果`original_prompt`不是"Injection completely consistent"，使用`original_prompt`分组
-2. 否则使用`structured_prompt`分组
-3. 按分组数量从大到小排序确定P值
-4. 同一组内按`download_time`从小到大排序确定v值
+1. If `original_prompt` is not "Injection completely consistent", use `original_prompt` for grouping
+2. Otherwise use `structured_prompt` for grouping
+3. Sort by group count from large to small to determine P value
+4. Sort by `download_time` from small to large within the same group to determine v value
 
-## 安装要求
+## Installation Requirements
 
-### Python依赖
+### Python Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -80,22 +80,22 @@ pip install -r requirements.txt
 
 ### FFmpeg
 
-需要安装FFmpeg并确保可执行文件在系统PATH中，或通过配置文件指定路径。
+FFmpeg needs to be installed and the executable file should be in the system PATH, or specify the path through configuration file.
 
-**下载地址**：https://ffmpeg.org/download.html
+**Download address**: https://ffmpeg.org/download.html
 
-**Windows安装步骤**：
-1. 下载Windows版本
-2. 解压到任意目录（如`C:\ffmpeg`）
-3. 将`ffmpeg.exe`所在目录添加到系统PATH环境变量
-4. 或在配置文件中指定完整路径
+**Windows installation steps**:
+1. Download Windows version
+2. Extract to any directory (e.g., `C:\ffmpeg`)
+3. Add the directory containing `ffmpeg.exe` to system PATH environment variable
+4. Or specify the full path in the configuration file
 
-## 配置文件
+## Configuration File
 
-复制`config.toml`并根据需要修改：
+Copy `config.toml` and modify as needed:
 
 ```toml
-# Grok Video Metadata Processor 配置文件
+# Grok Video Metadata Processor Configuration File
 ffmpeg_path = "E:\\Program Files\\ffmpeg.exe"
 default_input_dir = "E:\\20250825_AICG\\sub"
 default_output_dir = "E:\\20250825_AICG\\sub\\test"
@@ -115,35 +115,35 @@ common_ffmpeg_paths = [
 ]
 ```
 
-**注意**：脚本优先使用`config.toml`文件，如果不存在则回退到`config.json`格式。
+**Note**: The script prioritizes using the `config.toml` file, and falls back to `config.json` format if it doesn't exist.
 
-### 配置说明
+### Configuration Description
 
-- `ffmpeg_path`：FFmpeg可执行文件路径
-- `default_input_dir`：默认输入目录
-- `default_output_dir`：默认输出目录
-- `writer_names`：要写入Media.Writer的作者列表
-- `file_naming.prefix`：文件名前缀
-- `file_naming.separator`：分隔符
-- `file_naming.uuid_max_length`：UUID最大长度限制（0表示不限制）
+- `ffmpeg_path`: FFmpeg executable file path
+- `default_input_dir`: Default input directory
+- `default_output_dir`: Default output directory
+- `writer_names`: List of authors to write to Media.Writer
+- `file_naming.prefix`: Filename prefix
+- `file_naming.separator`: Separator
+- `file_naming.uuid_max_length`: UUID maximum length limit (0 means no limit)
 
-## 高级用法
+## Advanced Usage
 
-### 指定路径
+### Specify Paths
 
 ```bash
 python meta_video.py "C:\ffmpeg\ffmpeg.exe" "D:\input" "D:\output"
 ```
 
-参数顺序：FFmpeg路径、输入目录、输出目录。
+Parameter order: FFmpeg path, input directory, output directory.
 
-### 配置文件
+### Configuration File
 
-脚本会自动查找`config.json`文件，如果存在则使用其中的配置作为默认值。
+The script automatically looks for the `config.json` file, and uses the configuration in it as default values if it exists.
 
-## 输入文件要求
+## Input File Requirements
 
-### 目录结构
+### Directory Structure
 
 ```
 input_directory/
@@ -154,7 +154,7 @@ input_directory/
 └── ...
 ```
 
-### JSON元数据格式
+### JSON Metadata Format
 
 ```json
 {
@@ -173,47 +173,47 @@ input_directory/
 }
 ```
 
-## 输出说明
+## Output Description
 
-- **comment字段**：存储`structured_prompt`的JSON字符串
-- **title字段**：存储`original_prompt`
-- **genre字段**：存储`metadata.url`
-- **Media.Writer**：写入配置的作者列表
+- **comment field**: Stores JSON string of `structured_prompt`
+- **title field**: Stores `original_prompt`
+- **genre field**: Stores `metadata.url`
+- **Media.Writer**: Writes configured author list
 
-## 错误处理
+## Error Handling
 
-脚本会处理以下常见错误：
+The script handles the following common errors:
 
-- FFmpeg路径不存在
-- 输入/输出目录不存在或无权限
-- JSON文件格式错误
-- 对应的MP4文件不存在
-- 元数据写入失败
+- FFmpeg path does not exist
+- Input/output directory does not exist or no permission
+- JSON file format error
+- Corresponding MP4 file does not exist
+- Metadata writing failure
 
-## 注意事项
+## Notes
 
-- 仅支持Windows系统（需要pywin32）
-- 输出文件会覆盖已存在的同名文件
-- 建议在处理前备份重要文件
-- 确保有足够的磁盘空间存储输出文件
+- Only supports Windows system (requires pywin32)
+- Output files will overwrite existing files with the same name
+- Recommend backing up important files before processing
+- Ensure sufficient disk space to store output files
 
-## 故障排除
+## Troubleshooting
 
-### FFmpeg未找到
+### FFmpeg Not Found
 
-1. 检查FFmpeg是否正确安装
-2. 确认FFmpeg在系统PATH中
-3. 在配置文件中指定完整路径
-4. 使用命令行参数指定路径
+1. Check if FFmpeg is correctly installed
+2. Confirm FFmpeg is in system PATH
+3. Specify full path in configuration file
+4. Use command line parameters to specify path
 
-### 权限错误
+### Permission Errors
 
-1. 确保对输出目录有写入权限
-2. 以管理员身份运行脚本
-3. 检查文件是否被其他程序占用
+1. Ensure write permission to output directory
+2. Run script as administrator
+3. Check if files are occupied by other programs
 
-### 元数据写入失败
+### Metadata Writing Failure
 
-1. 检查JSON文件格式是否正确
-2. 确认对应的MP4文件存在
-3. 检查文件是否损坏
+1. Check if JSON file format is correct
+2. Confirm corresponding MP4 file exists
+3. Check if files are corrupted
