@@ -26,7 +26,7 @@ try:
 except ImportError:
     TOML_AVAILABLE = False
 
-
+# region 辅助功能
 def load_config():
     """
     加载配置文件，支持TOML和JSON格式
@@ -142,6 +142,88 @@ def save_video_prompt_templates(config, config_file='video_prompt_templates.json
         print(f"保存视频提示词模板配置文件失败: {e}")
 
 
+def migrate_existing_categories(templates_config):
+    """
+    迁移现有分类数据到新的分类结构
+    """
+
+    # 定义旧分类到新分类的映射
+    old_to_new_mapping = {
+        "non_injection_non_dict": "regular_prompt",
+        "non_injection_dict": "parameter_control",
+        "injection_consistent": "strict_injection"
+    }
+
+    # 检查是否已经使用新分类结构
+    current_categories = templates_config.get('categories', {})
+    has_new_structure = any(key in current_categories for key in ["regular_prompt", "parameter_control", "strict_injection"])
+    has_old_structure = any(key in current_categories for key in ["non_injection_non_dict", "non_injection_dict", "injection_consistent"])
+
+    if has_new_structure and not has_old_structure:
+        return
+
+    print("开始迁移现有分类数据...")
+
+    # 新的分类结构
+    new_categories = {
+        "regular_prompt": {
+            "name": "常规提示词",
+            "description": "非injection完全一致，非字典类型，长度在500以内",
+            "priority": 1,
+            "templates": {}
+        },
+        "parameter_control": {
+            "name": "参数控制提示词",
+            "description": "非injection完全一致，字典型，或者长度在500及以上",
+            "priority": 2,
+            "templates": {}
+        },
+        "strict_injection": {
+            "name": "严格注入提示词",
+            "description": "Injection完全一致",
+            "priority": 3,
+            "templates": {}
+        }
+    }
+
+    # 如果已经有新结构，保留现有数据
+    if has_new_structure:
+        for key in ["regular_prompt", "parameter_control", "strict_injection"]:
+            if key in current_categories and 'templates' in current_categories[key]:
+                new_categories[key]["templates"] = current_categories[key]["templates"]
+
+    # 迁移现有模板数据
+    migrated_count = 0
+    for old_key, new_key in old_to_new_mapping.items():
+        if old_key in templates_config['categories']:
+            old_category = templates_config['categories'][old_key]
+            if 'templates' in old_category:
+                # 对于 non_injection_non_dict，需要重新分类
+                if old_key == "non_injection_non_dict":
+                    for template_key, template_data in old_category['templates'].items():
+                        prompt_content = template_data.get('prompt_content', '')
+                        prompt_length = len(prompt_content)
+
+                        # 根据新规则重新分类
+                        if prompt_length >= 500:
+                            new_categories["parameter_control"]["templates"][template_key] = template_data
+                        else:
+                            new_categories["regular_prompt"]["templates"][template_key] = template_data
+                        migrated_count += 1
+                else:
+                    # 直接迁移其他分类
+                    new_categories[new_key]["templates"] = old_category['templates']
+                    migrated_count += len(old_category['templates'])
+
+    # 更新分类结构
+    templates_config['categories'] = new_categories
+
+    print(f"迁移完成，共迁移 {migrated_count} 个模板")
+
+# endregion
+
+# region 提示词模块
+
 def categorize_prompt(meta_obj):
     """
     根据meta_obj的original_prompt对提示词进行分类
@@ -153,7 +235,7 @@ def categorize_prompt(meta_obj):
 
     # 判断是否为Injection完全一致
     if original_prompt == "Injection completely consistent":
-        category_key = "injection_consistent"
+        category_key = "strict_injection"
         # 对于Injection完全一致的情况，使用structured_prompt作为内容
         if isinstance(structured_prompt, dict):
             prompt_content = json.dumps(structured_prompt, ensure_ascii=False, separators=(',', ':'))
@@ -162,12 +244,13 @@ def categorize_prompt(meta_obj):
     else:
         # 非Injection完全一致的情况，使用original_prompt作为内容
         prompt_content = str(original_prompt)
+        prompt_length = len(prompt_content)
 
-        # 判断original_prompt是否为字典
-        if isinstance(original_prompt, dict):
-            category_key = "non_injection_dict"
+        # 判断original_prompt是否为字典或长度>=500
+        if isinstance(original_prompt, dict) or prompt_length >= 500:
+            category_key = "parameter_control"
         else:
-            category_key = "non_injection_non_dict"
+            category_key = "regular_prompt"
 
     # 生成提示词key：original_prompt前5-10个字符 + 哈希值
     prompt_key = generate_prompt_key(original_prompt, prompt_content)
@@ -222,25 +305,28 @@ def update_video_prompt_templates(meta_files_info, config_file='video_prompt_tem
     # 初始化配置结构
     if 'categories' not in templates_config:
         templates_config['categories'] = {
-            "non_injection_non_dict": {
-                "name": "非Injection完全一致且非字典类型",
-                "description": "original_prompt不是'Injection completely consistent'且original_prompt不是字典类型",
+            "regular_prompt": {
+                "name": "常规提示词",
+                "description": "非injection完全一致，非字典类型，长度在500以内",
                 "priority": 1,
                 "templates": {}
             },
-            "non_injection_dict": {
-                "name": "非Injection完全一致但为字典类型",
-                "description": "original_prompt不是'Injection completely consistent'但original_prompt是字典类型",
+            "parameter_control": {
+                "name": "参数控制提示词",
+                "description": "非injection完全一致，字典型，或者长度在500及以上",
                 "priority": 2,
                 "templates": {}
             },
-            "injection_consistent": {
-                "name": "Injection完全一致",
-                "description": "original_prompt是'Injection completely consistent'的情况",
+            "strict_injection": {
+                "name": "严格注入提示词",
+                "description": "Injection完全一致",
                 "priority": 3,
                 "templates": {}
             }
         }
+    else:
+        # 迁移现有数据到新的分类结构
+        migrate_existing_categories(templates_config)
 
     if 'statistics' not in templates_config:
         templates_config['statistics'] = {
@@ -415,6 +501,9 @@ def calculate_file_naming_info(meta_files_info, config):
 
     return naming_info
 
+# endregion
+
+# region 主处理函数
 
 def process_videos():
     """
@@ -715,7 +804,9 @@ def process_videos():
             fail_count += 1
 
     # 处理缺少JSON的MP4文件 - 复制到输出目录并添加raw_前缀
-    print(f"\n开始复制缺少JSON的MP4文件...")
+    if missing_json_videos:
+        print(f"\n开始复制缺少JSON的MP4文件...")
+
     for base_name in missing_json_videos:
         filename = f"{base_name}.mp4"
         source_video_path = os.path.join(INPUT_DIR, filename)
@@ -743,7 +834,9 @@ def process_videos():
             fail_count += 1
 
     # 处理缺少视频文件的JSON文件 - 复制到输出目录并添加_miss后缀
-    print(f"\n开始处理缺少视频文件的JSON文件...")
+    if missing_videos:
+        print(f"\n开始处理缺少视频文件的JSON文件...")
+
     for missing_video_item in missing_videos:
         # 解析文件名 (格式: "filename: 找不到对应的视频文件")
         base_name = missing_video_item.split(':')[0]
@@ -792,8 +885,9 @@ def process_videos():
     print(f"  📄 处理JSON: {miss_json_count} 个 (_miss后缀的JSON)")
     print(f"  ❌ 失败: {fail_count} 个")
     print(f"  ⏭️ 跳过: {skipped_count} 个")
-    print(f"\n跳过详情:")
-    print(f"  - JSON读取失败: {len(failed_reads)} 个")
+    if skipped_count:
+        print(f"\n跳过详情:")
+        print(f"  - JSON读取失败: {len(failed_reads)} 个")
     print(f"\n文件统计:")
     print(f"  - 输入MP4文件: {len(video_files)} 个")
     print(f"  - 输入JSON文件: {len(meta_files)} 个")
@@ -806,3 +900,5 @@ def process_videos():
 
 if __name__ == "__main__":
     process_videos()
+
+# endregion
