@@ -284,6 +284,9 @@ def update_video_prompt_templates(meta_files_info, config_file='video_prompt_tem
         template = category['templates'][prompt_hash]
         template['video_count'] += 1
         if url:
+            # 确保urls是set类型
+            if isinstance(template['urls'], list):
+                template['urls'] = set(template['urls'])
             template['urls'].add(url)
         template['last_seen'] = datetime.now().isoformat()
 
@@ -464,14 +467,45 @@ def process_videos():
     meta_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(META_EXTENSION)]
     video_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(VIDEO_EXTENSION)]
 
-    if not meta_files:
-        print(f"错误：在目录 '{INPUT_DIR}' 中未找到任何 '{META_EXTENSION}' 文件。")
-        return
-
     print(f"目录统计:")
     print(f"  - JSON文件: {len(meta_files)} 个")
     print(f"  - MP4文件: {len(video_files)} 个")
     print(f"\n开始处理...")
+
+    def find_matching_video(meta_obj, meta_base_name, video_files, input_dir):
+        """
+        智能匹配视频文件，按优先级进行3轮查找：
+        1. 使用JSON内部的video_id匹配
+        2. 同名匹配
+        3. 将grok_video_替换成grok-video-再匹配
+        """
+        video_extension = '.mp4'
+
+        # 第一轮：使用video_id匹配
+        if 'metadata' in meta_obj and 'video_id' in meta_obj['metadata']:
+            video_id = meta_obj['metadata']['video_id']
+            for video_filename in video_files:
+                video_base_name = os.path.splitext(video_filename)[0]
+                if video_base_name == video_id:
+                    video_path = os.path.join(input_dir, video_filename)
+                    if os.path.exists(video_path):
+                        return video_path, f"video_id匹配: {video_id}"
+
+        # 第二轮：同名匹配
+        expected_video_filename = meta_base_name + video_extension
+        expected_video_path = os.path.join(input_dir, expected_video_filename)
+        if os.path.exists(expected_video_path):
+            return expected_video_path, f"同名匹配: {expected_video_filename}"
+
+        # 第三轮：grok_video_替换匹配
+        if 'grok_video_' in meta_base_name:
+            modified_base_name = meta_base_name.replace('grok_video_', 'grok-video-')
+            modified_video_filename = modified_base_name + video_extension
+            modified_video_path = os.path.join(input_dir, modified_video_filename)
+            if os.path.exists(modified_video_path):
+                return modified_video_path, f"替换匹配: {modified_video_filename}"
+
+        return None, "未找到匹配的视频文件"
 
     # 第一步：读取所有元数据文件并检查对应的视频文件
     meta_files_info = {}
@@ -485,35 +519,26 @@ def process_videos():
         base_name = os.path.splitext(video_filename)[0]
         all_video_base_names.add(base_name)
 
-    # 创建所有JSON文件的基础名称集合
-    all_meta_base_names = set()
-    for meta_filename in meta_files:
-        base_name = os.path.splitext(meta_filename)[0]
-        all_meta_base_names.add(base_name)
-
-    # 找出缺少JSON的MP4文件
-    missing_json_base_names = all_video_base_names - all_meta_base_names
-    for base_name in missing_json_base_names:
-        missing_json_videos.append(f"{base_name}.mp4: 缺少对应的JSON文件")
-
     for meta_filename in meta_files:
         base_name = os.path.splitext(meta_filename)[0]
         source_meta_path = os.path.join(INPUT_DIR, meta_filename)
-        source_video_path = os.path.join(INPUT_DIR, base_name + VIDEO_EXTENSION)
 
         try:
             with open(source_meta_path, 'r', encoding='utf-8') as f:
                 meta_obj = json.load(f)
 
-                # 检查对应的视频文件是否存在
-                if not os.path.exists(source_video_path):
-                    missing_videos.append(f"{base_name}: 找不到对应的视频文件")
+                # 使用智能匹配函数查找对应的视频文件
+                video_path, match_info = find_matching_video(meta_obj, base_name, video_files, INPUT_DIR)
+
+                if video_path is None:
+                    missing_videos.append(f"{base_name}: {match_info}")
                     continue
 
                 meta_files_info[base_name] = {
                     'meta_obj': meta_obj,
                     'meta_path': source_meta_path,
-                    'video_path': source_video_path
+                    'video_path': video_path,
+                    'match_info': match_info
                 }
         except Exception as e:
             failed_reads.append(f"{meta_filename}: {e}")
@@ -532,7 +557,33 @@ def process_videos():
     if missing_json_videos:
         print(f"跳过: {len(missing_json_videos)} 个MP4文件缺少对应的JSON文件:")
         for missing in missing_json_videos:
-            print(f"  - {missing}")
+            print(f"  - {missing}.mp4")
+
+    # 计算真正缺少JSON的MP4文件（没有被任何JSON文件匹配的MP4文件）
+    matched_video_base_names = set()
+    for base_name, info in meta_files_info.items():
+        # 从视频路径中提取基础名称
+        video_path = info['video_path']
+        video_filename = os.path.basename(video_path)
+        video_base_name = os.path.splitext(video_filename)[0]
+        matched_video_base_names.add(video_base_name)
+
+    # 找出真正缺少JSON的MP4文件
+    missing_json_base_names = all_video_base_names - matched_video_base_names
+    for base_name in missing_json_base_names:
+        missing_json_videos.append(base_name)
+
+    # 显示匹配统计信息
+    if meta_files_info:
+        print(f"\n匹配统计:")
+        match_types = {}
+        for base_name, info in meta_files_info.items():
+            match_info = info.get('match_info', '未知')
+            match_type = match_info.split(':')[0] if ':' in match_info else match_info
+            match_types[match_type] = match_types.get(match_type, 0) + 1
+
+        for match_type, count in match_types.items():
+            print(f"  - {match_type}: {count} 个文件")
 
     # 计算命名信息
     naming_info = calculate_file_naming_info(meta_files_info, config)
@@ -665,10 +716,8 @@ def process_videos():
 
     # 处理缺少JSON的MP4文件 - 复制到输出目录并添加raw_前缀
     print(f"\n开始复制缺少JSON的MP4文件...")
-    for missing_json_item in missing_json_videos:
-        # 解析文件名 (格式: "filename.mp4: 缺少对应的JSON文件")
-        filename = missing_json_item.split(':')[0]
-        base_name = os.path.splitext(filename)[0]
+    for base_name in missing_json_videos:
+        filename = f"{base_name}.mp4"
         source_video_path = os.path.join(INPUT_DIR, filename)
 
         # 生成带_raw后缀的新文件名
