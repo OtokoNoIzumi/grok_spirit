@@ -255,6 +255,10 @@ def categorize_prompt(meta_obj):
     original_prompt = meta_obj.get("original_prompt", "")
     structured_prompt = meta_obj.get("structured_prompt", {})
 
+    # 处理None值，确保空白提示词为空字符串
+    if original_prompt is None:
+        original_prompt = ""
+
     # 判断是否为Injection完全一致
     if original_prompt == "Injection completely consistent":
         category_key = "strict_injection"
@@ -288,6 +292,14 @@ def generate_prompt_key(original_prompt, prompt_content):
 
     返回: 组合的key字符串
     """
+    # 处理None值
+    if original_prompt is None:
+        original_prompt = ""
+
+    # 如果提示词内容为空，使用专门的key名称
+    if not prompt_content or prompt_content.strip() == "":
+        return "grok_normal"
+
     # 提取original_prompt的前5-10个合法字符
     prompt_str = str(original_prompt)
     prefix_chars = []
@@ -298,12 +310,7 @@ def generate_prompt_key(original_prompt, prompt_content):
             if len(prefix_chars) >= 10:
                 break
 
-    # 如果合法字符不足5个，用哈希值填充
-    if len(prefix_chars) < 5:
-        content_hash = hashlib.md5(prompt_content.encode("utf-8")).hexdigest()[:8]
-        prefix_chars.extend(list(content_hash[: 5 - len(prefix_chars)]))
-
-    # 取前5-10个字符作为前缀
+    # 取前5-10个字符作为前缀（移除长度自补完功能）
     prefix = "".join(prefix_chars[:10])
 
     # 生成内容哈希值
@@ -552,6 +559,9 @@ def process_videos():
 
     # 配置参数（可通过命令行覆盖）
     parser = argparse.ArgumentParser(description="批处理将JSON元数据写入MP4视频文件")
+    # 获取当前脚本所在目录
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
     parser.add_argument(
         "ffmpeg_path",
         nargs="?",
@@ -561,13 +571,13 @@ def process_videos():
     parser.add_argument(
         "input_dir",
         nargs="?",
-        default=config.get("default_input_dir", r"E:\20250825_AICG\sub"),
+        default=config.get("default_input_dir", script_dir),
         help="输入目录路径",
     )
     parser.add_argument(
         "output_dir",
         nargs="?",
-        default=config.get("default_output_dir", r"E:\20250825_AICG\sub\test"),
+        default=config.get("default_output_dir", os.path.join(script_dir, "output")),
         help="输出目录路径",
     )
 

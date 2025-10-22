@@ -28,7 +28,7 @@
 
 3. **下载并配置工具**（5-10分钟）
    - 下载本工具的所有文件到同一目录
-   - 复制 `config.toml` 并根据需要修改路径设置
+   - 复制 `config.toml.example` 为 `config.toml` 并根据需要修改路径设置
    - 安装依赖：打开命令提示符，在工具目录下运行 `pip install -r requirements.txt`
 
 ### 重要提示
@@ -96,7 +96,10 @@ pip install -r requirements.txt
 
 ## 配置文件
 
-复制`config.toml`并根据需要修改：
+### 初始设置
+
+1. 复制 `config.toml.example` 为 `config.toml`
+2. 根据需要修改配置
 
 ```toml
 # Grok Video Metadata Processor 配置文件
@@ -118,6 +121,13 @@ common_ffmpeg_paths = [
     "ffmpeg"
 ]
 ```
+
+### 默认行为
+
+- 如果 `config.toml` 不存在，脚本将使用默认值：
+  - **输入目录**：当前脚本所在目录
+  - **输出目录**：当前脚本目录下的 `output` 子目录
+  - **FFmpeg路径**：将尝试从常见位置自动检测
 
 **注意**：脚本优先使用`config.toml`文件，如果不存在则回退到`config.json`格式。
 
@@ -143,7 +153,7 @@ python meta_video.py "C:\ffmpeg\ffmpeg.exe" "D:\input" "D:\output"
 
 ### 配置文件
 
-脚本会自动查找`config.json`文件，如果存在则使用其中的配置作为默认值。
+脚本会优先查找 `config.toml` 文件，如果不存在则回退到 `config.json`。如果两个都不存在，将使用基于当前脚本目录的默认值。
 
 ## 输入文件要求
 

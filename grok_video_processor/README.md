@@ -28,7 +28,7 @@ A Python script for batch processing Grok video metadata, supporting JSON metada
 
 3. **Download and Configure Tool** (5-10 minutes)
    - Download all tool files to the same directory
-   - Copy `config.toml` and modify path settings as needed
+   - Copy `config.toml.example` to `config.toml` and modify path settings as needed
    - Install dependencies: Open command prompt, run `pip install -r requirements.txt` in the tool directory
 
 ### Important Tips
@@ -101,7 +101,10 @@ FFmpeg needs to be installed and the executable file should be in the system PAT
 
 ## Configuration File
 
-Copy `config.toml` and modify as needed:
+### Initial Setup
+
+1. Copy `config.toml.example` to `config.toml`
+2. Modify the configuration as needed
 
 ```toml
 # Grok Video Metadata Processor Configuration File
@@ -123,6 +126,13 @@ common_ffmpeg_paths = [
     "ffmpeg"
 ]
 ```
+
+### Default Behavior
+
+- If `config.toml` doesn't exist, the script will use default values:
+  - **Input directory**: Current script directory
+  - **Output directory**: `output` subdirectory in current script directory
+  - **FFmpeg path**: Will attempt to auto-detect from common locations
 
 **Note**: The script prioritizes using the `config.toml` file, and falls back to `config.json` format if it doesn't exist.
 
@@ -148,7 +158,7 @@ Parameter order: FFmpeg path, input directory, output directory.
 
 ### Configuration File
 
-The script automatically looks for the `config.json` file, and uses the configuration in it as default values if it exists.
+The script automatically looks for the `config.toml` file first, then falls back to `config.json` if it doesn't exist. If neither exists, it uses default values based on the current script directory.
 
 ## Input File Requirements
 

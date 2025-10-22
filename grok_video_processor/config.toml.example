@@ -1,18 +1,26 @@
-# Grok Video Metadata Processor 配置文件
-# 根据需要修改以下配置项
+# Grok Video Metadata Processor 配置文件示例
+# 复制此文件为 config.toml 并根据需要修改以下配置项
 
+# FFmpeg 程序路径
 ffmpeg_path = "E:\\Program Files\\ffmpeg.exe"
+
+# 默认输入目录路径
 default_input_dir = "E:\\20250825_AICG\\sub"
+
+# 默认输出目录路径
 default_output_dir = "E:\\20250825_AICG\\sub\\test"
 
+# 写入者名称列表
 writer_names = ["Izumi.Qu", "Grok"]
 
+# 文件命名配置
 [file_naming]
 prefix = "grok-video"
 separator = "-"
 uuid_max_length = 0
 replace_grok_video_prefix = true  # 将 grok_video_ 替换为 grok-video-
 
+# FFmpeg 常见路径列表（用于自动查找）
 common_ffmpeg_paths = [
     "C:\\ffmpeg\\bin\\ffmpeg.exe",
     "C:\\Program Files\\ffmpeg.exe",
