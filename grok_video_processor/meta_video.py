@@ -22,9 +22,11 @@ from win32com.shell import shellcon
 
 try:
     import toml
+
     TOML_AVAILABLE = True
 except ImportError:
     TOML_AVAILABLE = False
+
 
 # region 辅助功能
 def load_config():
@@ -40,7 +42,7 @@ def load_config():
             print("警告: 检测到TOML配置文件但未安装toml库，请运行: pip install toml")
             return {}
         try:
-            with open(toml_file, 'r', encoding='utf-8') as f:
+            with open(toml_file, "r", encoding="utf-8") as f:
                 return toml.load(f)
         except Exception as e:
             print(f"警告: 读取TOML配置文件失败: {e}")
@@ -48,7 +50,7 @@ def load_config():
     # 回退到JSON格式
     if os.path.exists(json_file):
         try:
-            with open(json_file, 'r', encoding='utf-8') as f:
+            with open(json_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             print(f"警告: 读取JSON配置文件失败: {e}")
@@ -89,7 +91,7 @@ def extract_uuid_from_url(url, max_length=0):
         return ""
 
     # 使用正则表达式匹配post/后的UUID
-    pattern = r'/post/([a-f0-9-]+)'
+    pattern = r"/post/([a-f0-9-]+)"
     match = re.search(pattern, url)
     if match:
         uuid = match.group(1)
@@ -105,19 +107,21 @@ def apply_filename_prefix_replacement(filename, config):
     根据配置替换文件名前缀
     如果配置启用且文件名以 grok_video_ 开头，则替换为 grok-video-
     """
-    replace_prefix = config.get('file_naming', {}).get('replace_grok_video_prefix', True)
+    replace_prefix = config.get("file_naming", {}).get(
+        "replace_grok_video_prefix", True
+    )
 
-    if replace_prefix and filename.startswith('grok_video_'):
-        return filename.replace('grok_video_', 'grok-video-', 1)
+    if replace_prefix and filename.startswith("grok_video_"):
+        return filename.replace("grok_video_", "grok-video-", 1)
 
     return filename
 
 
-def load_video_prompt_templates(config_file='video_prompt_templates.json'):
+def load_video_prompt_templates(config_file="video_prompt_templates.json"):
     """加载视频提示词模板配置文件"""
     if os.path.exists(config_file):
         try:
-            with open(config_file, 'r', encoding='utf-8') as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             print(f"警告: 读取视频提示词模板配置文件失败: {e}")
@@ -125,18 +129,18 @@ def load_video_prompt_templates(config_file='video_prompt_templates.json'):
     return {}
 
 
-def save_video_prompt_templates(config, config_file='video_prompt_templates.json'):
+def save_video_prompt_templates(config, config_file="video_prompt_templates.json"):
     """保存视频提示词模板配置文件"""
     try:
         # 对每个分类的模板按key排序
         sorted_config = config.copy()
-        for category_key, category in sorted_config['categories'].items():
-            if 'templates' in category:
+        for category_key, category in sorted_config["categories"].items():
+            if "templates" in category:
                 # 按key排序模板
-                sorted_templates = dict(sorted(category['templates'].items()))
-                category['templates'] = sorted_templates
+                sorted_templates = dict(sorted(category["templates"].items()))
+                category["templates"] = sorted_templates
 
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             json.dump(sorted_config, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"保存视频提示词模板配置文件失败: {e}")
@@ -151,13 +155,23 @@ def migrate_existing_categories(templates_config):
     old_to_new_mapping = {
         "non_injection_non_dict": "regular_prompt",
         "non_injection_dict": "parameter_control",
-        "injection_consistent": "strict_injection"
+        "injection_consistent": "strict_injection",
     }
 
     # 检查是否已经使用新分类结构
-    current_categories = templates_config.get('categories', {})
-    has_new_structure = any(key in current_categories for key in ["regular_prompt", "parameter_control", "strict_injection"])
-    has_old_structure = any(key in current_categories for key in ["non_injection_non_dict", "non_injection_dict", "injection_consistent"])
+    current_categories = templates_config.get("categories", {})
+    has_new_structure = any(
+        key in current_categories
+        for key in ["regular_prompt", "parameter_control", "strict_injection"]
+    )
+    has_old_structure = any(
+        key in current_categories
+        for key in [
+            "non_injection_non_dict",
+            "non_injection_dict",
+            "injection_consistent",
+        ]
+    )
 
     if has_new_structure and not has_old_structure:
         return
@@ -170,59 +184,67 @@ def migrate_existing_categories(templates_config):
             "name": "常规提示词",
             "description": "非injection完全一致，非字典类型，长度在500以内",
             "priority": 1,
-            "templates": {}
+            "templates": {},
         },
         "parameter_control": {
             "name": "参数控制提示词",
             "description": "非injection完全一致，字典型，或者长度在500及以上",
             "priority": 2,
-            "templates": {}
+            "templates": {},
         },
         "strict_injection": {
             "name": "严格注入提示词",
             "description": "Injection完全一致",
             "priority": 3,
-            "templates": {}
-        }
+            "templates": {},
+        },
     }
 
     # 如果已经有新结构，保留现有数据
     if has_new_structure:
         for key in ["regular_prompt", "parameter_control", "strict_injection"]:
-            if key in current_categories and 'templates' in current_categories[key]:
+            if key in current_categories and "templates" in current_categories[key]:
                 new_categories[key]["templates"] = current_categories[key]["templates"]
 
     # 迁移现有模板数据
     migrated_count = 0
     for old_key, new_key in old_to_new_mapping.items():
-        if old_key in templates_config['categories']:
-            old_category = templates_config['categories'][old_key]
-            if 'templates' in old_category:
+        if old_key in templates_config["categories"]:
+            old_category = templates_config["categories"][old_key]
+            if "templates" in old_category:
                 # 对于 non_injection_non_dict，需要重新分类
                 if old_key == "non_injection_non_dict":
-                    for template_key, template_data in old_category['templates'].items():
-                        prompt_content = template_data.get('prompt_content', '')
+                    for template_key, template_data in old_category[
+                        "templates"
+                    ].items():
+                        prompt_content = template_data.get("prompt_content", "")
                         prompt_length = len(prompt_content)
 
                         # 根据新规则重新分类
                         if prompt_length >= 500:
-                            new_categories["parameter_control"]["templates"][template_key] = template_data
+                            new_categories["parameter_control"]["templates"][
+                                template_key
+                            ] = template_data
                         else:
-                            new_categories["regular_prompt"]["templates"][template_key] = template_data
+                            new_categories["regular_prompt"]["templates"][
+                                template_key
+                            ] = template_data
                         migrated_count += 1
                 else:
                     # 直接迁移其他分类
-                    new_categories[new_key]["templates"] = old_category['templates']
-                    migrated_count += len(old_category['templates'])
+                    new_categories[new_key]["templates"] = old_category["templates"]
+                    migrated_count += len(old_category["templates"])
 
     # 更新分类结构
-    templates_config['categories'] = new_categories
+    templates_config["categories"] = new_categories
 
     print(f"迁移完成，共迁移 {migrated_count} 个模板")
+
 
 # endregion
 
 # region 提示词模块
+
 
 def categorize_prompt(meta_obj):
     """
@@ -230,15 +252,17 @@ def categorize_prompt(meta_obj):
 
     返回: (category_key, prompt_content, prompt_key)
     """
-    original_prompt = meta_obj.get('original_prompt', '')
-    structured_prompt = meta_obj.get('structured_prompt', {})
+    original_prompt = meta_obj.get("original_prompt", "")
+    structured_prompt = meta_obj.get("structured_prompt", {})
 
     # 判断是否为Injection完全一致
     if original_prompt == "Injection completely consistent":
         category_key = "strict_injection"
         # 对于Injection完全一致的情况，使用structured_prompt作为内容
         if isinstance(structured_prompt, dict):
-            prompt_content = json.dumps(structured_prompt, ensure_ascii=False, separators=(',', ':'))
+            prompt_content = json.dumps(
+                structured_prompt, ensure_ascii=False, separators=(",", ":")
+            )
         else:
             prompt_content = str(structured_prompt)
     else:
@@ -269,27 +293,29 @@ def generate_prompt_key(original_prompt, prompt_content):
     prefix_chars = []
 
     for char in prompt_str:
-        if char.isalnum() or char in '_-':
+        if char.isalnum() or char in "_-":
             prefix_chars.append(char)
             if len(prefix_chars) >= 10:
                 break
 
     # 如果合法字符不足5个，用哈希值填充
     if len(prefix_chars) < 5:
-        content_hash = hashlib.md5(prompt_content.encode('utf-8')).hexdigest()[:8]
-        prefix_chars.extend(list(content_hash[:5-len(prefix_chars)]))
+        content_hash = hashlib.md5(prompt_content.encode("utf-8")).hexdigest()[:8]
+        prefix_chars.extend(list(content_hash[: 5 - len(prefix_chars)]))
 
     # 取前5-10个字符作为前缀
-    prefix = ''.join(prefix_chars[:10])
+    prefix = "".join(prefix_chars[:10])
 
     # 生成内容哈希值
-    content_hash = hashlib.md5(prompt_content.encode('utf-8')).hexdigest()[:8]
+    content_hash = hashlib.md5(prompt_content.encode("utf-8")).hexdigest()[:8]
 
     # 组合前缀和哈希值
     return f"{prefix}_{content_hash}"
 
 
-def update_video_prompt_templates(meta_files_info, config_file='video_prompt_templates.json'):
+def update_video_prompt_templates(
+    meta_files_info, config_file="video_prompt_templates.json"
+):
     """
     更新视频提示词模板配置
 
@@ -303,36 +329,36 @@ def update_video_prompt_templates(meta_files_info, config_file='video_prompt_tem
     templates_config = load_video_prompt_templates(config_file)
 
     # 初始化配置结构
-    if 'categories' not in templates_config:
-        templates_config['categories'] = {
+    if "categories" not in templates_config:
+        templates_config["categories"] = {
             "regular_prompt": {
                 "name": "常规提示词",
                 "description": "非injection完全一致，非字典类型，长度在500以内",
                 "priority": 1,
-                "templates": {}
+                "templates": {},
             },
             "parameter_control": {
                 "name": "参数控制提示词",
                 "description": "非injection完全一致，字典型，或者长度在500及以上",
                 "priority": 2,
-                "templates": {}
+                "templates": {},
             },
             "strict_injection": {
                 "name": "严格注入提示词",
                 "description": "Injection完全一致",
                 "priority": 3,
-                "templates": {}
-            }
+                "templates": {},
+            },
         }
     else:
         # 迁移现有数据到新的分类结构
         migrate_existing_categories(templates_config)
 
-    if 'statistics' not in templates_config:
-        templates_config['statistics'] = {
+    if "statistics" not in templates_config:
+        templates_config["statistics"] = {
             "total_videos": 0,
             "total_urls": 0,
-            "last_updated": ""
+            "last_updated": "",
         }
 
     # 统计信息
@@ -341,50 +367,50 @@ def update_video_prompt_templates(meta_files_info, config_file='video_prompt_tem
 
     # 处理每个元数据文件
     for base_name, meta_info in meta_files_info.items():
-        meta_obj = meta_info['meta_obj']
+        meta_obj = meta_info["meta_obj"]
 
         # 分类提示词
         category_key, prompt_content, prompt_hash = categorize_prompt(meta_obj)
 
         # 获取URL
-        url = meta_obj.get('metadata', {}).get('url', '')
+        url = meta_obj.get("metadata", {}).get("url", "")
         if url:
             total_urls.add(url)
 
         total_videos += 1
 
         # 更新模板配置
-        category = templates_config['categories'][category_key]
+        category = templates_config["categories"][category_key]
 
-        if prompt_hash not in category['templates']:
+        if prompt_hash not in category["templates"]:
             # 创建新模板
-            category['templates'][prompt_hash] = {
+            category["templates"][prompt_hash] = {
                 "prompt_content": prompt_content,
                 "video_count": 0,
                 "urls": set(),
                 "first_seen": datetime.now().isoformat(),
-                "last_seen": datetime.now().isoformat()
+                "last_seen": datetime.now().isoformat(),
             }
 
         # 更新模板统计
-        template = category['templates'][prompt_hash]
-        template['video_count'] += 1
+        template = category["templates"][prompt_hash]
+        template["video_count"] += 1
         if url:
             # 确保urls是set类型
-            if isinstance(template['urls'], list):
-                template['urls'] = set(template['urls'])
-            template['urls'].add(url)
-        template['last_seen'] = datetime.now().isoformat()
+            if isinstance(template["urls"], list):
+                template["urls"] = set(template["urls"])
+            template["urls"].add(url)
+        template["last_seen"] = datetime.now().isoformat()
 
     # 转换set为list以便JSON序列化
-    for category in templates_config['categories'].values():
-        for template in category['templates'].values():
-            template['urls'] = list(template['urls'])
+    for category in templates_config["categories"].values():
+        for template in category["templates"].values():
+            template["urls"] = list(template["urls"])
 
     # 更新统计信息
-    templates_config['statistics']['total_videos'] = total_videos
-    templates_config['statistics']['total_urls'] = len(total_urls)
-    templates_config['statistics']['last_updated'] = datetime.now().isoformat()
+    templates_config["statistics"]["total_videos"] = total_videos
+    templates_config["statistics"]["total_urls"] = len(total_urls)
+    templates_config["statistics"]["last_updated"] = datetime.now().isoformat()
 
     # 保存配置
     save_video_prompt_templates(templates_config, config_file)
@@ -394,10 +420,14 @@ def update_video_prompt_templates(meta_files_info, config_file='video_prompt_tem
     print(f"  总视频数: {total_videos}")
     print(f"  总URL数: {len(total_urls)}")
 
-    for category_key, category in templates_config['categories'].items():
-        template_count = len(category['templates'])
-        total_template_videos = sum(t['video_count'] for t in category['templates'].values())
-        print(f"  {category['name']}: {template_count} 个模板, {total_template_videos} 个视频")
+    for category_key, category in templates_config["categories"].items():
+        template_count = len(category["templates"])
+        total_template_videos = sum(
+            t["video_count"] for t in category["templates"].values()
+        )
+        print(
+            f"  {category['name']}: {template_count} 个模板, {total_template_videos} 个视频"
+        )
 
     print(f"配置文件已保存: {config_file}")
 
@@ -420,16 +450,18 @@ def get_input_prompt_for_grouping(meta_obj):
     如果original_prompt不是"Injection completely consistent"，就用original_prompt
     否则用structured_prompt
     """
-    original_prompt = meta_obj.get('original_prompt', '')
+    original_prompt = meta_obj.get("original_prompt", "")
 
     if original_prompt != "Injection completely consistent":
         return str(original_prompt)  # 确保返回字符串
     else:
-        structured_prompt = meta_obj.get('structured_prompt', {})
+        structured_prompt = meta_obj.get("structured_prompt", {})
         # 将structured_prompt转换为字符串用于分组
         try:
             if isinstance(structured_prompt, dict):
-                return json.dumps(structured_prompt, ensure_ascii=False, separators=(',', ':'))
+                return json.dumps(
+                    structured_prompt, ensure_ascii=False, separators=(",", ":")
+                )
             else:
                 return str(structured_prompt)
         except Exception as e:
@@ -443,27 +475,31 @@ def calculate_file_naming_info(meta_files_info, config):
     返回: {filename: {'p': p_value, 'v': v_value, 'uuid': uuid}}
     """
     # 获取UUID长度限制
-    uuid_max_length = config.get('file_naming', {}).get('uuid_max_length', 0)
+    uuid_max_length = config.get("file_naming", {}).get("uuid_max_length", 0)
 
     # 按URL分组（每个URL是一个独立的分组）
     url_groups = defaultdict(list)
 
     for filename, meta_info in meta_files_info.items():
         try:
-            meta_obj = meta_info['meta_obj']
-            url = meta_obj.get('metadata', {}).get('url', '')
+            meta_obj = meta_info["meta_obj"]
+            url = meta_obj.get("metadata", {}).get("url", "")
             uuid = extract_uuid_from_url(url, uuid_max_length)
 
             # 使用UUID作为分组键，如果没有UUID则使用_blank_
             group_key = uuid if uuid else "_blank_"
 
-            url_groups[group_key].append({
-                'filename': filename,
-                'meta_info': meta_info,
-                'uuid': uuid,
-                'download_time': parse_download_time(meta_obj.get('metadata', {}).get('download_time', '')),
-                'input_prompt': get_input_prompt_for_grouping(meta_obj)
-            })
+            url_groups[group_key].append(
+                {
+                    "filename": filename,
+                    "meta_info": meta_info,
+                    "uuid": uuid,
+                    "download_time": parse_download_time(
+                        meta_obj.get("metadata", {}).get("download_time", "")
+                    ),
+                    "input_prompt": get_input_prompt_for_grouping(meta_obj),
+                }
+            )
         except Exception as e:
             print(f"错误: 处理文件 {filename} 时出错: {e}")
             print(f"  meta_obj: {meta_info.get('meta_obj', {})}")
@@ -477,33 +513,33 @@ def calculate_file_naming_info(meta_files_info, config):
         prompt_groups = defaultdict(list)
 
         for item in items:
-            input_prompt = item['input_prompt']
+            input_prompt = item["input_prompt"]
             prompt_groups[input_prompt].append(item)
 
         # 按分组数量和最大download_time排序来确定P值（URL组内独立）
-        sorted_prompt_groups = sorted(prompt_groups.items(),
-                                     key=lambda x: (-len(x[1]), max(item['download_time'] for item in x[1])))
+        sorted_prompt_groups = sorted(
+            prompt_groups.items(),
+            key=lambda x: (-len(x[1]), max(item["download_time"] for item in x[1])),
+        )
 
         # 在URL组内分配P值（从1开始）
         for p_value, (input_prompt, prompt_items) in enumerate(sorted_prompt_groups, 1):
             # 在同一个P组内，按download_time从小到大排序来确定v值
-            sorted_items = sorted(prompt_items, key=lambda x: x['download_time'])
+            sorted_items = sorted(prompt_items, key=lambda x: x["download_time"])
 
             for v_value, item in enumerate(sorted_items, 1):
-                filename = item['filename']
-                uuid = item['uuid']
+                filename = item["filename"]
+                uuid = item["uuid"]
 
-                naming_info[filename] = {
-                    'p': p_value,
-                    'v': v_value,
-                    'uuid': uuid
-                }
+                naming_info[filename] = {"p": p_value, "v": v_value, "uuid": uuid}
 
     return naming_info
+
 
 # endregion
 
 # region 主处理函数
+
 
 def process_videos():
     """
@@ -515,27 +551,36 @@ def process_videos():
     config = load_config()
 
     # 配置参数（可通过命令行覆盖）
-    parser = argparse.ArgumentParser(description='批处理将JSON元数据写入MP4视频文件')
-    parser.add_argument('ffmpeg_path', nargs='?',
-                       default=config.get('ffmpeg_path', r'E:\Program Files\ffmpeg.exe'),
-                       help='FFmpeg程序路径')
-    parser.add_argument('input_dir', nargs='?',
-                       default=config.get('default_input_dir', r'E:\20250825_AICG\sub'),
-                       help='输入目录路径')
-    parser.add_argument('output_dir', nargs='?',
-                       default=config.get('default_output_dir', r'E:\20250825_AICG\sub\test'),
-                       help='输出目录路径')
+    parser = argparse.ArgumentParser(description="批处理将JSON元数据写入MP4视频文件")
+    parser.add_argument(
+        "ffmpeg_path",
+        nargs="?",
+        default=config.get("ffmpeg_path", r"E:\Program Files\ffmpeg.exe"),
+        help="FFmpeg程序路径",
+    )
+    parser.add_argument(
+        "input_dir",
+        nargs="?",
+        default=config.get("default_input_dir", r"E:\20250825_AICG\sub"),
+        help="输入目录路径",
+    )
+    parser.add_argument(
+        "output_dir",
+        nargs="?",
+        default=config.get("default_output_dir", r"E:\20250825_AICG\sub\test"),
+        help="输出目录路径",
+    )
 
     args = parser.parse_args()
 
     # 智能查找FFmpeg路径
-    FFMPEG_PATH = find_ffmpeg(args.ffmpeg_path, config.get('common_ffmpeg_paths', []))
+    FFMPEG_PATH = find_ffmpeg(args.ffmpeg_path, config.get("common_ffmpeg_paths", []))
     if not FFMPEG_PATH:
         print(f"错误: 找不到FFmpeg程序")
         print(f"请检查以下路径:")
         print(f"  指定路径: {args.ffmpeg_path}")
         print(f"  系统PATH: ffmpeg")
-        if config.get('common_ffmpeg_paths'):
+        if config.get("common_ffmpeg_paths"):
             print(f"  常见路径: {', '.join(config.get('common_ffmpeg_paths', []))}")
         print(f"请安装FFmpeg或将路径添加到配置文件config.json中")
         return
@@ -544,8 +589,8 @@ def process_videos():
 
     INPUT_DIR = args.input_dir
     OUTPUT_DIR = args.output_dir
-    META_EXTENSION = '.json'
-    VIDEO_EXTENSION = '.mp4'
+    META_EXTENSION = ".json"
+    VIDEO_EXTENSION = ".mp4"
 
     # 确保输出目录存在
     if not os.path.exists(OUTPUT_DIR):
@@ -568,11 +613,11 @@ def process_videos():
         2. 同名匹配
         3. 将grok_video_替换成grok-video-再匹配
         """
-        video_extension = '.mp4'
+        video_extension = ".mp4"
 
         # 第一轮：使用video_id匹配
-        if 'metadata' in meta_obj and 'video_id' in meta_obj['metadata']:
-            video_id = meta_obj['metadata']['video_id']
+        if "metadata" in meta_obj and "video_id" in meta_obj["metadata"]:
+            video_id = meta_obj["metadata"]["video_id"]
             for video_filename in video_files:
                 video_base_name = os.path.splitext(video_filename)[0]
                 if video_base_name == video_id:
@@ -587,8 +632,8 @@ def process_videos():
             return expected_video_path, f"同名匹配: {expected_video_filename}"
 
         # 第三轮：grok_video_替换匹配
-        if 'grok_video_' in meta_base_name:
-            modified_base_name = meta_base_name.replace('grok_video_', 'grok-video-')
+        if "grok_video_" in meta_base_name:
+            modified_base_name = meta_base_name.replace("grok_video_", "grok-video-")
             modified_video_filename = modified_base_name + video_extension
             modified_video_path = os.path.join(input_dir, modified_video_filename)
             if os.path.exists(modified_video_path):
@@ -613,21 +658,23 @@ def process_videos():
         source_meta_path = os.path.join(INPUT_DIR, meta_filename)
 
         try:
-            with open(source_meta_path, 'r', encoding='utf-8') as f:
+            with open(source_meta_path, "r", encoding="utf-8") as f:
                 meta_obj = json.load(f)
 
                 # 使用智能匹配函数查找对应的视频文件
-                video_path, match_info = find_matching_video(meta_obj, base_name, video_files, INPUT_DIR)
+                video_path, match_info = find_matching_video(
+                    meta_obj, base_name, video_files, INPUT_DIR
+                )
 
                 if video_path is None:
                     missing_videos.append(f"{base_name}: {match_info}")
                     continue
 
                 meta_files_info[base_name] = {
-                    'meta_obj': meta_obj,
-                    'meta_path': source_meta_path,
-                    'video_path': video_path,
-                    'match_info': match_info
+                    "meta_obj": meta_obj,
+                    "meta_path": source_meta_path,
+                    "video_path": video_path,
+                    "match_info": match_info,
                 }
         except Exception as e:
             failed_reads.append(f"{meta_filename}: {e}")
@@ -652,7 +699,7 @@ def process_videos():
     matched_video_base_names = set()
     for base_name, info in meta_files_info.items():
         # 从视频路径中提取基础名称
-        video_path = info['video_path']
+        video_path = info["video_path"]
         video_filename = os.path.basename(video_path)
         video_base_name = os.path.splitext(video_filename)[0]
         matched_video_base_names.add(video_base_name)
@@ -667,8 +714,8 @@ def process_videos():
         print(f"\n匹配统计:")
         match_types = {}
         for base_name, info in meta_files_info.items():
-            match_info = info.get('match_info', '未知')
-            match_type = match_info.split(':')[0] if ':' in match_info else match_info
+            match_info = info.get("match_info", "未知")
+            match_type = match_info.split(":")[0] if ":" in match_info else match_info
             match_types[match_type] = match_types.get(match_type, 0) + 1
 
         for match_type, count in match_types.items():
@@ -696,20 +743,22 @@ def process_videos():
 
         # 生成新的文件名
         naming_data = naming_info[base_name]
-        uuid = naming_data['uuid']
-        p_value = naming_data['p']
-        v_value = naming_data['v']
+        uuid = naming_data["uuid"]
+        p_value = naming_data["p"]
+        v_value = naming_data["v"]
 
         # 从配置文件获取命名设置
-        file_naming_config = config.get('file_naming', {})
-        prefix = file_naming_config.get('prefix', 'grok_video')
-        separator = file_naming_config.get('separator', '_')
+        file_naming_config = config.get("file_naming", {})
+        prefix = file_naming_config.get("prefix", "grok_video")
+        separator = file_naming_config.get("separator", "_")
 
         # 构建文件名，处理UUID为空的情况
         if uuid:
             new_filename = f"{prefix}{separator}{uuid}{separator}P{p_value}{separator}v{v_value}{VIDEO_EXTENSION}"
         else:
-            new_filename = f"{prefix}{separator}P{p_value}{separator}v{v_value}{VIDEO_EXTENSION}"
+            new_filename = (
+                f"{prefix}{separator}P{p_value}{separator}v{v_value}{VIDEO_EXTENSION}"
+            )
 
         # 应用文件名前缀替换
         new_filename = apply_filename_prefix_replacement(new_filename, config)
@@ -725,59 +774,78 @@ def process_videos():
                 continue
 
         # 2. 视频文件检查已在预处理阶段完成，直接使用预处理的结果
-        source_video_path = meta_files_info[base_name]['video_path']
+        source_video_path = meta_files_info[base_name]["video_path"]
 
         # 2. 使用已读取的元数据内容
-        meta_obj = meta_files_info[base_name]['meta_obj']
+        meta_obj = meta_files_info[base_name]["meta_obj"]
 
         # comment：只存 structured_prompt
-        structured_prompt = meta_obj.get('structured_prompt', {})
-        metadata_content = json.dumps(structured_prompt, ensure_ascii=False, separators=(',', ':'))
+        structured_prompt = meta_obj.get("structured_prompt", {})
+        metadata_content = json.dumps(
+            structured_prompt, ensure_ascii=False, separators=(",", ":")
+        )
         # keywords：存 metadata.url
-        metadata_url = ''
+        metadata_url = ""
         try:
-            metadata_url = meta_obj.get('metadata', {}).get('url', '') or ''
+            metadata_url = meta_obj.get("metadata", {}).get("url", "") or ""
         except Exception:
-            metadata_url = ''
+            metadata_url = ""
         # 副标题：放 original_prompt
-        original_prompt = meta_obj.get('original_prompt', '') or ''
+        original_prompt = meta_obj.get("original_prompt", "") or ""
 
         # 3. 使用 ffmpeg 写入 comment、title 和 genre
         try:
             command = [
                 FFMPEG_PATH,
-                '-i', source_video_path,
-                '-c', 'copy',
-                '-map_metadata', '0',
-                '-metadata', f'comment={metadata_content}',  # \u00a9cmt
-                '-metadata', f'title={original_prompt}',     # \u00a9nam
-                '-metadata', f'genre={metadata_url}',         # \u00a9gen
-                '-y',
-                output_video_path
+                "-i",
+                source_video_path,
+                "-c",
+                "copy",
+                "-map_metadata",
+                "0",
+                "-metadata",
+                f"comment={metadata_content}",  # \u00a9cmt
+                "-metadata",
+                f"title={original_prompt}",  # \u00a9nam
+                "-metadata",
+                f"genre={metadata_url}",  # \u00a9gen
+                "-y",
+                output_video_path,
             ]
 
             # 执行 ffmpeg 命令
-            result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
+            result = subprocess.run(
+                command, check=True, capture_output=True, text=True, encoding="utf-8"
+            )
 
             # 4. 使用 Windows COM 属性写入 Writer
             def write_extended_properties(dst_path, writer_to_add):
                 try:
                     pythoncom.CoInitialize()
                     ps = propsys.SHGetPropertyStoreFromParsingName(
-                        dst_path, None, shellcon.GPS_READWRITE, propsys.IID_IPropertyStore
+                        dst_path,
+                        None,
+                        shellcon.GPS_READWRITE,
+                        propsys.IID_IPropertyStore,
                     )
 
                     # Writer (System.Media.Writer) - 写入多个作者（用分号分隔）
                     try:
                         if writer_to_add:
-                            pkey_writer = propsys.PSGetPropertyKeyFromName('System.Media.Writer')
+                            pkey_writer = propsys.PSGetPropertyKeyFromName(
+                                "System.Media.Writer"
+                            )
                             if isinstance(writer_to_add, list):
                                 # 将多个作者用分号连接成一个字符串
-                                writer_string = '; '.join(writer_to_add)
-                                ps.SetValue(pkey_writer, propsys.PROPVARIANTType(writer_string))
+                                writer_string = "; ".join(writer_to_add)
+                                ps.SetValue(
+                                    pkey_writer, propsys.PROPVARIANTType(writer_string)
+                                )
                             else:
                                 # 单个字符串
-                                ps.SetValue(pkey_writer, propsys.PROPVARIANTType(writer_to_add))
+                                ps.SetValue(
+                                    pkey_writer, propsys.PROPVARIANTType(writer_to_add)
+                                )
                     except Exception as e:
                         print(f"  -> 警告: 写入 Writer 失败: {e}")
 
@@ -789,7 +857,7 @@ def process_videos():
                         pass
 
             # 从配置文件获取作者列表
-            writer_names = config.get('writer_names', ['Izumi.Qu', 'Grok'])
+            writer_names = config.get("writer_names", ["Izumi.Qu", "Grok"])
             write_extended_properties(output_video_path, writer_names)
 
             print(f"✅ {base_name} -> {new_filename}")
@@ -839,18 +907,20 @@ def process_videos():
 
     for missing_video_item in missing_videos:
         # 解析文件名 (格式: "filename: 找不到对应的视频文件")
-        base_name = missing_video_item.split(':')[0]
+        base_name = missing_video_item.split(":")[0]
         json_filename = f"{base_name}.json"
         source_json_path = os.path.join(INPUT_DIR, json_filename)
 
         try:
             # 读取JSON文件内容以提取UUID
-            with open(source_json_path, 'r', encoding='utf-8') as f:
+            with open(source_json_path, "r", encoding="utf-8") as f:
                 meta_obj = json.load(f)
 
             # 尝试从metadata.url中提取UUID
-            url = meta_obj.get('metadata', {}).get('url', '')
-            uuid = extract_uuid_from_url(url, config.get('file_naming', {}).get('uuid_max_length', 0))
+            url = meta_obj.get("metadata", {}).get("url", "")
+            uuid = extract_uuid_from_url(
+                url, config.get("file_naming", {}).get("uuid_max_length", 0)
+            )
 
             # 生成带_miss后缀的新文件名
             if uuid:
