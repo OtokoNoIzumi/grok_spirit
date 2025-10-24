@@ -385,14 +385,105 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
   }
 });
 
+// Construct HD video URL from normal video URL
+function constructHdUrl(videoUrl) {
+  if (!videoUrl) return null;
+
+  // Handle both relative and absolute URLs
+  if (videoUrl.startsWith('http')) {
+    // Absolute URL: replace .mp4 with _hd.mp4
+    return videoUrl.replace('.mp4', '_hd.mp4');
+  } else {
+    // Relative URL: add _hd before .mp4
+    return videoUrl.replace('.mp4', '_hd.mp4');
+  }
+}
+
+// Check if URL exists using HEAD request
+async function checkUrlExists(url) {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
+  } catch (error) {
+    console.log('URL check failed:', error);
+    return false;
+  }
+}
+
+// Request HD video generation via POST
+async function requestHdGeneration(videoId) {
+  try {
+    const payload = { videoId: videoId };
+    console.log('Sending HD generation request with payload:', JSON.stringify(payload));
+
+    const response = await fetch('https://grok.com/rest/media/video/upscale', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.hdMediaUrl || null;
+    } else {
+      console.log('HD generation request failed:', response.status, response.statusText);
+      return null;
+    }
+  } catch (error) {
+    console.log('HD generation request error:', error);
+    return null;
+  }
+}
+
 // Download video with metadata
 async function downloadVideoWithMeta(videoInfo) {
   try {
     const videoId = videoInfo.videoId;
     const relativeVideoPath = videoInfo.videoUrl || '';
-    const absoluteVideoUrl = relativeVideoPath.startsWith('http')
+    const normalVideoUrl = relativeVideoPath.startsWith('http')
       ? relativeVideoPath
       : `https://assets.grok.com/${relativeVideoPath}?cache=1`;
+
+    let finalVideoUrl = null;
+    let isHd = false;
+    let videoQuality = 'normal';
+
+    // Step 1: Try to download HD version directly (check if HD URL exists)
+    const hdUrl = constructHdUrl(normalVideoUrl);
+    if (hdUrl) {
+      console.log('Checking if HD video exists:', hdUrl);
+      const hdExists = await checkUrlExists(hdUrl);
+
+      if (hdExists) {
+        finalVideoUrl = hdUrl;
+        isHd = true;
+        videoQuality = 'hd';
+        console.log('HD video found, will download HD version');
+      }
+    }
+
+    // Step 2: If HD doesn't exist, try to trigger HD generation
+    if (!finalVideoUrl) {
+      console.log('HD video not found, attempting to trigger HD generation...');
+      const hdGeneratedUrl = await requestHdGeneration(videoId);
+
+      if (hdGeneratedUrl) {
+        finalVideoUrl = hdGeneratedUrl;
+        isHd = true;
+        videoQuality = 'hd';
+        console.log('HD video generation successful, will download HD version');
+      }
+    }
+
+    // Step 3: Fallback to normal version
+    if (!finalVideoUrl) {
+      finalVideoUrl = normalVideoUrl;
+      isHd = false;
+      videoQuality = 'normal';
+      console.log('Using normal video version');
+    }
 
     // 1) Download metadata JSON first (consistent with frontend "Download JSON" structure, named with Video ID)
     const downloadData = {
@@ -403,7 +494,9 @@ async function downloadVideoWithMeta(videoInfo) {
         progress: videoInfo.progress,
         download_time: formatFullDateTime(new Date()),
         url: videoInfo.pageUrl,
-        video_url: relativeVideoPath
+        video_url: relativeVideoPath,
+        video_quality: videoQuality,
+        is_hd: isHd
       }
     };
 
@@ -415,10 +508,14 @@ async function downloadVideoWithMeta(videoInfo) {
     desiredFilenameQueue.push(`grok_video_${videoId}.json`);
     await chrome.downloads.download({ url: metaUrl, filename: `grok_video_${videoId}.json`, saveAs: false });
 
-    // 2) Download video file, ensure custom filename
-    pendingFilenames[absoluteVideoUrl] = `grok_video_${videoId}.mp4`;
-    desiredFilenameQueue.push(`grok_video_${videoId}.mp4`);
-    await chrome.downloads.download({ url: absoluteVideoUrl, filename: `grok_video_${videoId}.mp4`, saveAs: false });
+    // 2) Download video file, ensure custom filename with quality indicator
+    // const videoFilename = isHd ? `grok_video_${videoId}_hd.mp4` : `grok_video_${videoId}.mp4`;
+    const videoFilename = `grok_video_${videoId}.mp4`;
+    pendingFilenames[finalVideoUrl] = videoFilename;
+    desiredFilenameQueue.push(videoFilename);
+    await chrome.downloads.download({ url: finalVideoUrl, filename: videoFilename, saveAs: false });
+
+    console.log(`Download completed: ${videoQuality} version of video ${videoId}`);
   } catch (error) {
     console.error('Download failed:', error);
   }
