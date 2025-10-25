@@ -136,27 +136,58 @@
         .twitter svg {
             fill: #1da1f2;
         }
+        .setting-item {
+            margin-bottom: 12px;
+        }
+        .setting-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .setting-checkbox {
+            margin-right: 8px;
+            transform: scale(1.1);
+        }
+        .setting-text {
+            font-size: 14px;
+        }
+        .setting-description {
+            margin-top: 6px;
+            margin-left: 24px;
+            font-size: 12px;
+            color: #7f8c8d;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Grok Spirit</h1>
-        <div class="version" id="version-info">v1.0.4</div>
-    </div>
-
-
-    <div class="info">
-        <div class="info-title">How to use:</div>
-        1. Go to <a href="https://grok.com/imagine" target="_blank" class="link">grok.com/imagine</a> and generate a video<br>
-        2. The plugin will automatically detect completed videos<br>
-        3. Use the meta info panel to view and edit grok prompt params<br>
-        4. Download videos and metadata with the same filename as needed<br>
-        5. The meta info panel will be shown when you reopen the video page
     </div>
 
     <div class="info">
+        <div class="info-title">Quick Start:</div>
+        Visit <a href="https://grok.com/imagine" target="_blank" class="link">grok.com/imagine</a> to generate videos. The plugin automatically detects completed videos and provides download options with metadata editing.
+    </div>
+
+    <div class="info" id="technical-note">
         <div class="info-title">Technical Note:</div>
-        This plugin uses debugger permission to capture prompt info from grok.com request data. The debugger will automatically activate on grok.com video pages and deactivate when you leave.
+        Uses debugger permission to capture prompt data. Auto-activates on grok.com video pages.
+    </div>
+
+    <div class="info">
+        <div class="info-title">Settings:</div>
+        <div class="setting-item">
+            <label class="setting-label">
+                <input type="checkbox" id="defense-mode-toggle" class="setting-checkbox">
+                <span class="setting-text">Filename Protection</span>
+            </label>
+            <div class="setting-description">
+                Enable if other extensions interfere with downloads.
+            </div>
+        </div>
     </div>
 
     <div class="footer">

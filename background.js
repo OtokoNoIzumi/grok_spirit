@@ -20,13 +20,22 @@ function formatFullDateTime(date = new Date()) {
 
 let attachedTabs = {};
 const targetUrl = "https://grok.com/rest/app-chat/conversations/new";
+// 防御模式开关：默认关闭，避免与其他扩展冲突
+let isFilenameDefenseEnabled = false;
+let filenameDeterminerHandler = null; // 动态监听器引用
+// 文件名映射：仅在防御模式开启时使用
 const pendingFilenames = {}; // url -> desired filename
 const desiredFilenameQueue = []; // fallback queue if URL changes after redirect
 const videoProcessingTabs = {}; // tabId -> { isProcessing: boolean, completed: boolean }
 
 // Plugin installation handler
-chrome.runtime.onInstalled.addListener((details) => {
-  console.log('Grok Spirit installed/updated:', details.reason);
+chrome.runtime.onInstalled.addListener(async (details) => {
+  // Load defense mode setting on startup
+  const data = await chrome.storage.local.get('isFilenameDefenseEnabled');
+  isFilenameDefenseEnabled = !!data.isFilenameDefenseEnabled;
+
+  // 根据设置动态注册/注销监听器
+  updateFilenameDeterminerListener();
 });
 
 // Auto-attach debugger to grok.com tabs
@@ -96,6 +105,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: true });
         return true;
 
+      case 'setFilenameDefense':
+        isFilenameDefenseEnabled = request.enabled;
+        // 动态更新监听器状态
+        updateFilenameDeterminerListener();
+        sendResponse({ success: true });
+        return true;
+
       default:
         console.warn('Unknown action:', request.action);
         sendResponse({ success: false, error: 'Unknown action' });
@@ -107,27 +123,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
-// Ensure final filename via onDeterminingFilename
-chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
-  try {
-    const desired = pendingFilenames[downloadItem.url];
-    if (desired) {
-      delete pendingFilenames[downloadItem.url];
-      suggest({ filename: desired, conflictAction: 'uniquify' });
-      return;
-    }
-    if (desiredFilenameQueue.length > 0) {
-      const fallback = desiredFilenameQueue.shift();
-      if (fallback && typeof fallback === 'string') {
-        suggest({ filename: fallback, conflictAction: 'uniquify' });
-        return;
-      }
-    }
-  } catch (e) {
-    // ignore
+// 动态注册/注销文件名控制监听器
+function updateFilenameDeterminerListener() {
+  // 先移除现有监听器（如果存在）
+  if (filenameDeterminerHandler) {
+    chrome.downloads.onDeterminingFilename.removeListener(filenameDeterminerHandler);
+    filenameDeterminerHandler = null;
   }
-  suggest();
-});
+
+  // 如果防御模式开启，注册新的监听器
+  if (isFilenameDefenseEnabled) {
+    filenameDeterminerHandler = (downloadItem, suggest) => {
+      try {
+        // 只处理本扩展发起的下载
+        if (downloadItem.byExtensionId !== chrome.runtime.id) {
+          return;
+        }
+
+        // 使用原有的文件名控制逻辑
+        const desired = pendingFilenames[downloadItem.url];
+        if (desired) {
+          delete pendingFilenames[downloadItem.url];
+          suggest({ filename: desired, conflictAction: 'uniquify' });
+          return;
+        }
+
+        if (desiredFilenameQueue.length > 0) {
+          const fallback = desiredFilenameQueue.shift();
+          if (fallback && typeof fallback === 'string') {
+            suggest({ filename: fallback, conflictAction: 'uniquify' });
+            return;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    chrome.downloads.onDeterminingFilename.addListener(filenameDeterminerHandler);
+  }
+}
 
 
 // Attach debugger to tab
@@ -504,16 +539,22 @@ async function downloadVideoWithMeta(videoInfo) {
     const metaDataStr = JSON.stringify(downloadData, null, 2);
     const metaUrl = `data:application/json;charset=utf-8,${encodeURIComponent(metaDataStr)}`;
 
-    pendingFilenames[metaUrl] = `grok_video_${videoId}.json`;
-    desiredFilenameQueue.push(`grok_video_${videoId}.json`);
-    await chrome.downloads.download({ url: metaUrl, filename: `grok_video_${videoId}.json`, saveAs: false });
+    const jsonFilename = `grok_video_${videoId}.json`;
+    // 防御模式开启时，使用文件名控制；否则依赖 downloads.download 的 filename 参数
+    if (isFilenameDefenseEnabled) {
+      pendingFilenames[metaUrl] = jsonFilename;
+      desiredFilenameQueue.push(jsonFilename);
+    }
+    await chrome.downloads.download({ url: metaUrl, filename: jsonFilename, conflictAction: 'uniquify', saveAs: false });
 
     // 2) Download video file, ensure custom filename with quality indicator
     // const videoFilename = isHd ? `grok_video_${videoId}_hd.mp4` : `grok_video_${videoId}.mp4`;
     const videoFilename = `grok_video_${videoId}.mp4`;
-    pendingFilenames[finalVideoUrl] = videoFilename;
-    desiredFilenameQueue.push(videoFilename);
-    await chrome.downloads.download({ url: finalVideoUrl, filename: videoFilename, saveAs: false });
+    if (isFilenameDefenseEnabled) {
+      pendingFilenames[finalVideoUrl] = videoFilename;
+      desiredFilenameQueue.push(videoFilename);
+    }
+    await chrome.downloads.download({ url: finalVideoUrl, filename: videoFilename, conflictAction: 'uniquify', saveAs: false });
 
     console.log(`Download completed: ${videoQuality} version of video ${videoId}`);
   } catch (error) {
@@ -527,9 +568,16 @@ async function downloadMetaFile(metaData, filename) {
     const metaDataStr = JSON.stringify(metaData, null, 2);
     const metaUrl = `data:application/json;charset=utf-8,${encodeURIComponent(metaDataStr)}`;
 
+    // 防御模式开启时，使用文件名控制
+    if (isFilenameDefenseEnabled) {
+      pendingFilenames[metaUrl] = filename;
+      desiredFilenameQueue.push(filename);
+    }
+
     await chrome.downloads.download({
       url: metaUrl,
       filename: filename,
+      conflictAction: 'uniquify',
       saveAs: false
     });
   } catch (error) {
