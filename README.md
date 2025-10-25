@@ -29,6 +29,7 @@
 - 💾 **Video Download** - Download videos with matching metadata
 - 🔧 **Preset Support** - Support for both custom and preset prompts
 - 🌙 **Dark Mode Support** - Automatically syncs with Grok's theme (light/dark)
+- 🛡️ **Filename Protection** - Smart defense mode to prevent conflicts with other extensions
 - 🎬 **Metadata Processing** - Python tool for batch video metadata embedding
 
 ## 🚀 Quick Start
@@ -87,6 +88,32 @@ Click the button below to install directly from Chrome Web Store:
 - **🔄 Real-time Injection**: Modify parameters without regenerating from scratch
 - **📊 Structure Analysis**: Understand how Grok processes your prompts internally
 - **🎨 Meta Prompting**: Use discovered structures as templates for new creations
+- **🛡️ Smart Conflict Resolution**: Automatic detection and prevention of extension conflicts
+
+## 🛡️ Filename Protection (v1.1.4+)
+
+### Smart Defense Mode
+
+Grok Spirit now includes intelligent filename protection to prevent conflicts with other Chrome extensions:
+
+- **🔒 Default Safe Mode**: By default, Grok Spirit operates in "good citizen" mode, never interfering with other extensions
+- **⚡ On-Demand Protection**: Enable "Filename Protection" in the popup settings when conflicts occur
+- **🎯 Dynamic Control**: Automatically registers/unregisters filename listeners based on user preference
+- **🔄 Instant Toggle**: Changes take effect immediately without requiring browser restart
+
+### When to Use
+
+Enable filename protection if you experience:
+- Download conflicts with other extensions (e.g., LMArena Auto Refresh)
+- Error messages like "another extension has determined a different filename"
+- Inconsistent or missing filenames for Grok Spirit downloads
+
+### How It Works
+
+1. **Normal Operation**: Grok Spirit relies on Chrome's built-in filename handling
+2. **Defense Mode**: When enabled, Grok Spirit takes active control of filename determination
+3. **Smart Detection**: Only processes downloads initiated by Grok Spirit itself
+4. **Conflict Prevention**: Prevents other extensions from overriding Grok Spirit's intended filenames
 
 ## 🎬 Video Metadata Processing
 
